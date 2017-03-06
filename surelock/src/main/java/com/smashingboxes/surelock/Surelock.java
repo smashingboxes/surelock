@@ -355,12 +355,15 @@ public class Surelock {
         try {
             SecretKey secretKey = (SecretKey) keyStore.getKey(keyStoreAlias, null);
             // Check to see if we need to create a new KeyStore key
-            if (secretKey != null && getEncryptionIv() != null) {
+            if (secretKey != null) {
                 try {
                     if (encryptionType == ASYMMETRIC) {
                         getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey);
                     } else {
-                        getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(getEncryptionIv()));
+                        byte[] encryptionIv = getEncryptionIv();
+                        if (encryptionIv != null) {
+                            getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(encryptionIv));
+                        }
                     }
                     return;
                 } catch (KeyPermanentlyInvalidatedException e) {
