@@ -153,6 +153,7 @@ public class Surelock {
             if (showMessaging) {
                 // Show a message telling the user they haven't set up a fingerprint or lock screen.
                 Toast.makeText(context, context.getString(R.string.error_toast_user_enable_securelock), Toast.LENGTH_LONG).show();
+                context.startActivity(new Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS));
             }
             return false;
         }
