@@ -98,7 +98,7 @@ public class Surelock {
         this.storage = storage;
         this.keyStoreAlias = keystoreAlias;
         try {
-            setUpKeyStoreForSymmetricEncryption();
+            setUpKeyStoreForEncryption();
         } catch (SurelockException e) {
             Log.e(TAG, "Failed to set up KeyStore", e);
         }
@@ -243,10 +243,10 @@ public class Surelock {
     }
 
     /**
-     * Initialize our KeyStore w/ the default security provider "BKS" (BouncyCastle)
-     * Initialize a KeyGenerator using AES as our symmetric provider
+     * Initialize our KeyStore w/ the default security provider
+     * Initialize a KeyGenerator using either RSA for asymmetric or AES for symmetric
      */
-    private void setUpKeyStoreForSymmetricEncryption() throws SurelockException {
+    private void setUpKeyStoreForEncryption() throws SurelockException {
         // NOTE: "AndroidKeyStore" is only supported in APIs 18+,
         // but since the FingerprintManager APIs support 23+, this doesn't matter.
         // https://developer.android.com/reference/java/security/KeyStore.html
