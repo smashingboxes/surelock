@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Text colors based on material design guidelines -->
+    <color name="primary_text">#DE000000</color> <!-- Text 87% Opacity-->
+    <color name="secondary_text">#8A000000</color>  <!-- Text 54% Opacity -->
+    <color name="hint_text">#61000000</color>  <!-- Text 38% Opacity -->
+
+    <color name="error_red">#BC1010</color>
+    <color name="hint_grey">#42000000</color>
+    <color name="success_green">#4CAF50</color>
+</resources>

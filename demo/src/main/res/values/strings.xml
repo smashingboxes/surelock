@@ -1,0 +1,18 @@
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Surelock</string>
+
+    <string name="prompt_username">Username</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="error_incorrect_password">This password is incorrect</string>
+    <string name="error_field_required">This field is required</string>
+    <string name="set_up_fingerprint">Set up fingerprint</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="confirmation">Your username and password are:\n
+        <xliff:g id="usernameBefore" example="user1">%s</xliff:g>\n
+        <xliff:g id="passwordBefore" example="password">%s</xliff:g>\n\n
+        <xliff:g id="encryptedValue" example="A2klj4n*9@;SLDFJ,q.12puw">%s</xliff:g>\n\n
+        <xliff:g id="usernameAfter" example="user1">%s</xliff:g>\n
+        <xliff:g id="passwordAfter" example="password">%s</xliff:g></string>
+</resources>
