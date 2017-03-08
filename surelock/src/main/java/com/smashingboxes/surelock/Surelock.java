@@ -74,7 +74,7 @@ public class Surelock {
     public static final int ASYMMETRIC = 1;
     private int encryptionType = ASYMMETRIC; //TODO consider allowing developers to change this if they want
 
-    private Context context;
+
     private SurelockFingerprintListener listener;
     private SurelockStorage storage;
     private FingerprintManager fingerprintManager;
@@ -97,7 +97,6 @@ public class Surelock {
     }
 
     public Surelock(Context context, SurelockStorage storage, String keystoreAlias) {
-        this.context = context;
         if (context instanceof SurelockFingerprintListener) {
             this.listener = (SurelockFingerprintListener) context;
         } else {
@@ -154,7 +153,7 @@ public class Surelock {
      *                      It is recommended to set this to true.
      * @return true if user has fingerprint hardware, has enabled secure lock, and has enrolled fingerprints
      */
-    public static boolean fingerprintAuthIsSetUp(boolean showMessaging, Context context) {
+    public static boolean fingerprintAuthIsSetUp(Context context, boolean showMessaging) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             return false;
         }
@@ -212,9 +211,8 @@ public class Surelock {
                                      @StyleRes int styleId) {
         SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
         if (fragment == null) {
-            fragment = (SurelockDefaultDialog) SurelockDefaultDialog.instantiate(context, SurelockDefaultDialog.class.getName());
+            fragment = SurelockDefaultDialog.newInstance(styleId);
         }
-        fragment.setStyleId(styleId);
         loginWithFingerprint(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
     }
 

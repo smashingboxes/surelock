@@ -100,7 +100,7 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
     protected void onResume() {
         super.onResume();
         if (userWantsToUseFingerprintToLogin()) {
-            if (!Surelock.fingerprintAuthIsSetUp(true, this)) {
+            if (!Surelock.fingerprintAuthIsSetUp(this, true)) {
                 fingerprintCheckbox.setVisibility(View.VISIBLE);
                 fingerprintCheckbox.setChecked(false);
             } else {
@@ -152,7 +152,7 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
         String username = usernameView.getText().toString();
         String password = passwordView.getText().toString();
 
-        if (fingerprintCheckbox.isChecked() && Surelock.fingerprintAuthIsSetUp(true, this)) {
+        if (fingerprintCheckbox.isChecked() && Surelock.fingerprintAuthIsSetUp(this, true)) {
             try {
                 surelock.store(KEY_CRE_DEN_TIALS, getFormattedCredentialsForEncryption(username, password));
             } catch (UnsupportedEncodingException e) {

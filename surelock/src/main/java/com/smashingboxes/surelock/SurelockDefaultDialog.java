@@ -31,6 +31,8 @@ import javax.crypto.IllegalBlockSizeException;
 
 public class SurelockDefaultDialog extends DialogFragment implements SurelockFragment {
 
+    private static final String KEY_STYLE_ID = "com.smashingboxes.surelock.KEY_STYLE_ID";
+
     private static final long ERROR_TIMEOUT_MILLIS = 1600;
     private static final long SUCCESS_DELAY_MILLIS = 1300; //TODO make these configurable via attrs
 
@@ -47,6 +49,17 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private SwirlView iconView;
     private TextView statusTextView;
 
+    public static SurelockDefaultDialog newInstance(@StyleRes int styleId) {
+
+        Bundle args = new Bundle();
+
+        SurelockDefaultDialog fragment = new SurelockDefaultDialog();
+
+        args.putInt(KEY_STYLE_ID, styleId);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
     @Override
     public void init(FingerprintManager fingerprintManager,
                      FingerprintManager.CryptoObject cryptoObject,
@@ -55,15 +68,6 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         this.fingerprintManager = fingerprintManager;
         this.keyForDecryption = key;
         this.storage = storage;
-    }
-
-    /**
-     * Sets the resource id of the style set to use for custom attributes
-     *
-     * @param styleId The resource id of the style set
-     */
-    public void setStyleId(@StyleRes int styleId) {
-        this.styleId = styleId;
     }
 
     @Override
@@ -75,14 +79,19 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         // Do not create a new Fragment when the Activity is re-created such as orientation changes.
         setRetainInstance(true);
 
+        if (savedInstanceState != null) {
+            styleId = savedInstanceState.getInt(KEY_STYLE_ID);
+        } else {
+            styleId = getArguments().getInt(KEY_STYLE_ID);
+        }
+
         TypedArray attrs = getActivity().obtainStyledAttributes(styleId, R.styleable
                 .SurelockDefaultDialog);
-        int dialogTheme = attrs.getResourceId(R.styleable.SurelockDefaultDialog_sl_dialog_theme,
-                Integer.MAX_VALUE);
+        int dialogTheme = attrs.getResourceId(R.styleable.SurelockDefaultDialog_sl_dialog_theme, 0);
         attrs.recycle();
 
-        setStyle(DialogFragment.STYLE_NO_TITLE, dialogTheme == Integer.MAX_VALUE ? android.R.style
-                .Theme : dialogTheme);
+        setStyle(DialogFragment.STYLE_NO_TITLE, dialogTheme == 0 ? android.R.style.Theme :
+                dialogTheme);
     }
 
     @Override
@@ -113,14 +122,14 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         String fallbackButtonText = attrs.getString(R.styleable
                 .SurelockDefaultDialog_sl_fallback_button_text);
         int fallbackButtonColor = attrs.getColor(R.styleable
-                .SurelockDefaultDialog_sl_fallback_button_background, Integer.MAX_VALUE);
+                .SurelockDefaultDialog_sl_fallback_button_background, 0);
         int fallbackButtonTextColor = attrs.getColor(R.styleable
-                .SurelockDefaultDialog_sl_fallback_button_text_color, Integer.MAX_VALUE);
+                .SurelockDefaultDialog_sl_fallback_button_text_color, 0);
         fallbackButton.setText(fallbackButtonText);
-        if (fallbackButtonColor != Integer.MAX_VALUE) {
+        if (fallbackButtonColor != 0) {
             fallbackButton.setBackgroundColor(fallbackButtonColor);
         }
-        if (fallbackButtonTextColor != Integer.MAX_VALUE) {
+        if (fallbackButtonTextColor != 0) {
             fallbackButton.setTextColor(fallbackButtonTextColor);
         }
 
@@ -128,13 +137,13 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         String titleBarText = attrs.getString(R.styleable.SurelockDefaultDialog_sl_title_bar_text);
         titleBar.setText(titleBarText);
         int titleBarColor = attrs.getColor(R.styleable
-                .SurelockDefaultDialog_sl_title_bar_background, Integer.MAX_VALUE);
+                .SurelockDefaultDialog_sl_title_bar_background, 0);
         int titleBarTextColor = attrs.getColor(R.styleable
-                .SurelockDefaultDialog_sl_title_bar_text_color, Integer.MAX_VALUE);
-        if (titleBarColor != Integer.MAX_VALUE) {
+                .SurelockDefaultDialog_sl_title_bar_text_color, 0);
+        if (titleBarColor != 0) {
             titleBar.setBackgroundColor(titleBarColor);
         }
-        if (titleBarTextColor != Integer.MAX_VALUE) {
+        if (titleBarTextColor != 0) {
             titleBar.setTextColor(titleBarTextColor);
         }
 
@@ -182,6 +191,12 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     public void onDetach() {
         super.onDetach();
         listener = null;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putInt(KEY_STYLE_ID, styleId);
+        super.onSaveInstanceState(outState);
     }
 
     @Override
