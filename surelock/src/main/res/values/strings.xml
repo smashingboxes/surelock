@@ -5,6 +5,6 @@
     <string name="fingerprint_hint">Touch sensor</string>
     <string name="cancel">Cancel</string>
     <string name="password">Password</string>
-    <string name="error_toast_user_enable_securelock">Secure lock screen hasn\'t set up.\n Go to \'Settings -> Security -> Fingerprint\' to set up a fingerprint</string>
+    <string name="error_toast_user_enable_securelock">Secure lock screen hasn\'t been set up.\n Go to \'Settings -> Security -> Fingerprint\' to set up a fingerprint</string>
     <string name="error_toast_user_enroll_fingerprints">Go to \'Settings -> Security -> Fingerprint\' and register at least one fingerprint</string>
 </resources>
