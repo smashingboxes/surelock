@@ -4,9 +4,11 @@ import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.FragmentManager;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.StyleRes;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,6 +40,8 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private SurelockStorage storage;
     private SurelockFingerprintListener listener;
     private SurelockFingerprintUiHelper uiHelper;
+    @StyleRes
+    private int styleId;
 
     // TODO  clean up and genericize default dialog - add custom attribute set which can be overridden
     private SwirlView iconView;
@@ -53,6 +57,15 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         this.storage = storage;
     }
 
+    /**
+     * Sets the resource id of the style set to use for custom attributes
+     *
+     * @param styleId The resource id of the style set
+     */
+    public void setStyleId(@StyleRes int styleId) {
+        this.styleId = styleId;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,24 +74,70 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
 
         // Do not create a new Fragment when the Activity is re-created such as orientation changes.
         setRetainInstance(true);
-        setStyle(DialogFragment.STYLE_NO_TITLE, android.R.style.Theme);
+
+        TypedArray attrs = getActivity().obtainStyledAttributes(styleId, R.styleable
+                .SurelockDefaultDialog);
+        int dialogTheme = attrs.getResourceId(R.styleable.SurelockDefaultDialog_sl_dialog_theme,
+                Integer.MAX_VALUE);
+        attrs.recycle();
+
+        setStyle(DialogFragment.STYLE_NO_TITLE, dialogTheme == Integer.MAX_VALUE ? android.R.style
+                .Theme : dialogTheme);
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle
+            savedInstanceState) {
         View view = inflater.inflate(R.layout.fingerprint_dialog_container, container, false);
+        TypedArray attrs = getActivity().obtainStyledAttributes(styleId, R.styleable
+                .SurelockDefaultDialog);
 
-        iconView = (SwirlView) view.findViewById(R.id.fingerprint_icon);
-        statusTextView = (TextView) view.findViewById(R.id.fingerprint_status);
-        Button usePasswordButton = (Button) view.findViewById(R.id.fallback_button);
-        usePasswordButton.setOnClickListener(new View.OnClickListener() {
+        setUpViews(view, attrs);
+
+        attrs.recycle();
+
+        return view;
+    }
+
+    private void setUpViews(View fragmentView, TypedArray attrs) {
+        iconView = (SwirlView) fragmentView.findViewById(R.id.fingerprint_icon);
+        statusTextView = (TextView) fragmentView.findViewById(R.id.fingerprint_status);
+        Button fallbackButton = (Button) fragmentView.findViewById(R.id.fallback_button);
+        fallbackButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dismiss();
             }
         });
 
-        return view;
+        String fallbackButtonText = attrs.getString(R.styleable
+                .SurelockDefaultDialog_sl_fallback_button_text);
+        int fallbackButtonColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_fallback_button_background, Integer.MAX_VALUE);
+        int fallbackButtonTextColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_fallback_button_text_color, Integer.MAX_VALUE);
+        fallbackButton.setText(fallbackButtonText);
+        if (fallbackButtonColor != Integer.MAX_VALUE) {
+            fallbackButton.setBackgroundColor(fallbackButtonColor);
+        }
+        if (fallbackButtonTextColor != Integer.MAX_VALUE) {
+            fallbackButton.setTextColor(fallbackButtonTextColor);
+        }
+
+        TextView titleBar = (TextView) fragmentView.findViewById(R.id.sl_title_bar);
+        String titleBarText = attrs.getString(R.styleable.SurelockDefaultDialog_sl_title_bar_text);
+        titleBar.setText(titleBarText);
+        int titleBarColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_title_bar_background, Integer.MAX_VALUE);
+        int titleBarTextColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_title_bar_text_color, Integer.MAX_VALUE);
+        if (titleBarColor != Integer.MAX_VALUE) {
+            titleBar.setBackgroundColor(titleBarColor);
+        }
+        if (titleBarTextColor != Integer.MAX_VALUE) {
+            titleBar.setTextColor(titleBarTextColor);
+        }
+
     }
 
     @Override
@@ -174,9 +233,11 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private Runnable resetErrorTextRunnable = new Runnable() {
         @Override
         public void run() {
-            statusTextView.setTextColor(getResources().getColor(R.color.hint_grey, null));
-            statusTextView.setText(getResources().getString(R.string.fingerprint_hint));
-            iconView.setState(SwirlView.State.ON);
+            if (isAdded()) {
+                statusTextView.setTextColor(getResources().getColor(R.color.hint_grey, null));
+                statusTextView.setText(getResources().getString(R.string.fingerprint_hint));
+                iconView.setState(SwirlView.State.ON);
+            }
         }
     };
 }

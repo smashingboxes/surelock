@@ -13,6 +13,7 @@ import android.security.keystore.KeyProperties;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.StyleRes;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -83,7 +84,15 @@ public class Surelock {
     private KeyFactory keyFactory;
     private final String keyStoreAlias;
 
+    /**
+     * Initializes the Surelock main class
+     *
+     * @return A new Surelock instance, or null if the device does not support fingerprint auth
+     */
     public static Surelock initialize(Context context, SurelockStorage storage, String keystoreAlias) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return null;
+        }
         return new Surelock(context, storage, keystoreAlias);
     }
 
@@ -112,8 +121,8 @@ public class Surelock {
      * @return true if fingerprint hardware is detected
      */
     @SuppressWarnings({"MissingPermission"})
-    public boolean hasFingerprintHardware() {
-        return fingerprintManager.isHardwareDetected();
+    public static boolean hasFingerprintHardware(Context context) {
+        return context.getSystemService(FingerprintManager.class).isHardwareDetected();
     }
 
     /**
@@ -122,8 +131,8 @@ public class Surelock {
      * @return true if fingerprints have been enrolled. Otherwise, false.
      */
     @SuppressWarnings({"MissingPermission"})
-    public boolean hasUserEnrolledFingerprints() {
-        return fingerprintManager.hasEnrolledFingerprints();
+    public static boolean hasUserEnrolledFingerprints(Context context) {
+        return context.getSystemService(FingerprintManager.class).hasEnrolledFingerprints();
     }
 
     /**
@@ -132,7 +141,7 @@ public class Surelock {
      *
      * @return true if user has set one of these screen lock methods or if the SIM card is locked.
      */
-    public boolean hasUserEnabledSecureLock() {
+    public static boolean hasUserEnabledSecureLock(Context context) {
         KeyguardManager keyguardManager = context.getSystemService(KeyguardManager.class);
         return keyguardManager.isKeyguardSecure();
     }
@@ -145,18 +154,21 @@ public class Surelock {
      *                      It is recommended to set this to true.
      * @return true if user has fingerprint hardware, has enabled secure lock, and has enrolled fingerprints
      */
-    public boolean fingerprintAuthIsSetUp(boolean showMessaging) {
-        if (!hasFingerprintHardware()) {
+    public static boolean fingerprintAuthIsSetUp(boolean showMessaging, Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             return false;
         }
-        if (!hasUserEnabledSecureLock()) {
+        if (!hasFingerprintHardware(context)) {
+            return false;
+        }
+        if (!hasUserEnabledSecureLock(context)) {
             if (showMessaging) {
                 // Show a message telling the user they haven't set up a fingerprint or lock screen.
                 Toast.makeText(context, context.getString(R.string.error_toast_user_enable_securelock), Toast.LENGTH_LONG).show();
             }
             return false;
         }
-        if (!hasUserEnrolledFingerprints()) {
+        if (!hasUserEnrolledFingerprints(context)) {
             if (showMessaging) {
                 // This happens when no fingerprints are registered.
                 Toast.makeText(context, R.string.error_toast_user_enroll_fingerprints, Toast.LENGTH_LONG).show();
@@ -188,17 +200,21 @@ public class Surelock {
     /**
      * Login with the default Surelock dialog fragment
      *
-     * @param key pointer in storage to encrypted value
-     * @param fragmentManager
-     * @param fingerprintDialogFragmentTag
+     * @param key                          pointer in storage to encrypted value
+     * @param fragmentManager              The FragmentManger used to load the dialog fragment
+     * @param fingerprintDialogFragmentTag The tag associated with the dialog fragment
+     * @param styleId                      The resource id of the style set for custom dialog
+     *                                     attributes
      */
     public void loginWithFingerprint(@NonNull String key,
                                      @NonNull FragmentManager fragmentManager,
-                                     String fingerprintDialogFragmentTag) {
+                                     String fingerprintDialogFragmentTag,
+                                     @StyleRes int styleId) {
         SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
         if (fragment == null) {
             fragment = (SurelockDefaultDialog) SurelockDefaultDialog.instantiate(context, SurelockDefaultDialog.class.getName());
         }
+        fragment.setStyleId(styleId);
         loginWithFingerprint(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
     }
 
