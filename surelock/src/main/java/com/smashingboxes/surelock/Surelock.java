@@ -216,6 +216,15 @@ public class Surelock {
         enrollFingerprintAndStore(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
     }
 
+    /**
+     * Enroll a fingerprint, encrypt a value, and store the value at the specified key
+     * Use this if you want to use your own custom dialog rather than Surelock's default dialog
+     *
+     * @param key pointer in storage to encrypted value
+     * @param surelockFragment your own custom Surelock Fragment
+     * @param fragmentManager FragmentManger used to load the dialog fragment
+     * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
+     */
     public void enrollFingerprintAndStore(String key,
                                           SurelockFragment surelockFragment,
                                           @NonNull FragmentManager fragmentManager,
