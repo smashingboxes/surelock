@@ -72,7 +72,7 @@ public class Surelock {
     public @interface EncryptionType {}
     public static final int SYMMETRIC = 0;
     public static final int ASYMMETRIC = 1;
-    private int encryptionType = ASYMMETRIC; //TODO consider allowing developers to change this if they want
+    private int encryptionType = SYMMETRIC; //TODO consider allowing developers to change this if they want
 
 
     private SurelockFingerprintListener listener;
@@ -179,7 +179,6 @@ public class Surelock {
         return true;
     }
 
-
     /**
      * Encrypt a value and store it at the specified key
      *
@@ -187,7 +186,7 @@ public class Surelock {
      * @param value value to be encrypted and stored
      */
     public void store(String key, byte[] value) {
-        initKeyStoreKey();
+        initKeyStoreKey(Cipher.ENCRYPT_MODE);
         Cipher cipher = initCipher(Cipher.ENCRYPT_MODE);
         try {
             final byte[] encryptedValue = cipher.doFinal(value);
@@ -198,13 +197,57 @@ public class Surelock {
     }
 
     /**
+     * Enroll a fingerprint, encrypt a value, and store the value at the specified key
+     *
+     * @param key pointer in storage to encrypted value
+     * @param valueToEncrypt value to be encrypted and stored
+     * @param fragmentManager FragmentManger used to load the dialog fragment
+     * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
+     * @param styleId resource id of the style set for custom dialog attributes
+     */
+    public void enrollFingerprintAndStore(String key, byte[] valueToEncrypt,
+                                          @NonNull FragmentManager fragmentManager,
+                                          String fingerprintDialogFragmentTag,
+                                          @StyleRes int styleId) {
+        SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
+        if (fragment == null) {
+            fragment = SurelockDefaultDialog.newInstance(Cipher.ENCRYPT_MODE, valueToEncrypt, styleId);
+        }
+        enrollFingerprintAndStore(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
+    }
+
+    public void enrollFingerprintAndStore(String key,
+                                          SurelockFragment surelockFragment,
+                                          @NonNull FragmentManager fragmentManager,
+                                          String fingerprintDialogFragmentTag) {
+        initKeyStoreKey(Cipher.ENCRYPT_MODE);
+        Cipher cipher;
+        try {
+            cipher = initCipher(Cipher.ENCRYPT_MODE);
+        } catch (RuntimeException e) {
+            listener.onFingerprintError(null); //TODO we need better management of all of these listeners passed everywhere.
+            return;
+        }
+
+        if (cipher != null) {
+            showFingerprintDialog(key, cipher, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
+        } else {
+            // TODO
+            // This happens if the lock screen has been disabled or a fingerprint got
+            // enrolled. Thus show the dialog to authenticate with their password first
+            // and ask the user if they want to authenticate with fingerprints in the
+            // future
+//            showFingerprintDialog(cipher, NEW_FINGERPRINT_ENROLLED, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
+        }
+    }
+
+    /**
      * Login with the default Surelock dialog fragment
      *
      * @param key                          pointer in storage to encrypted value
-     * @param fragmentManager              The FragmentManger used to load the dialog fragment
-     * @param fingerprintDialogFragmentTag The tag associated with the dialog fragment
-     * @param styleId                      The resource id of the style set for custom dialog
-     *                                     attributes
+     * @param fragmentManager              FragmentManger used to load the dialog fragment
+     * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
+     * @param styleId                      resource id of the style set for custom dialog attributes
      */
     public void loginWithFingerprint(@NonNull String key,
                                      @NonNull FragmentManager fragmentManager,
@@ -212,7 +255,7 @@ public class Surelock {
                                      @StyleRes int styleId) {
         SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
         if (fragment == null) {
-            fragment = SurelockDefaultDialog.newInstance(styleId);
+            fragment = SurelockDefaultDialog.newInstance(Cipher.DECRYPT_MODE, styleId);
         }
         loginWithFingerprint(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
     }
@@ -221,9 +264,9 @@ public class Surelock {
      * Login with a custom dialog fragment
      *
      * @param key pointer in storage to encrypted value
-     * @param surelockFragment
-     * @param fragmentManager
-     * @param fingerprintDialogFragmentTag
+     * @param surelockFragment your own custom Surelock Fragment
+     * @param fragmentManager FragmentManger used to load the dialog fragment
+     * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
      */
     public void loginWithFingerprint(@NonNull String key,
                                      SurelockFragment surelockFragment,
@@ -364,19 +407,23 @@ public class Surelock {
     /**
      * Initialize a Key for our KeyStore.
      * NOTE: It won't recreate one if a valid key already exists.
+     *
+     * @param opmode the operation mode of this cipher (this is one of
+     * the following:
+     * <code>ENCRYPT_MODE</code>, <code>DECRYPT_MODE</code>)
      */
-    private void initKeyStoreKey() {
+    private void initKeyStoreKey(int opmode) {
         try {
             SecretKey secretKey = (SecretKey) keyStore.getKey(keyStoreAlias, null);
             // Check to see if we need to create a new KeyStore key
             if (secretKey != null) {
                 try {
                     if (encryptionType == ASYMMETRIC) {
-                        getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey);
+                        getCipherInstance().init(opmode, secretKey);
                     } else {
                         byte[] encryptionIv = getEncryptionIv();
                         if (encryptionIv != null) {
-                            getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(encryptionIv));
+                            getCipherInstance().init(opmode, secretKey, new IvParameterSpec(encryptionIv));
                         }
                     }
                     return;

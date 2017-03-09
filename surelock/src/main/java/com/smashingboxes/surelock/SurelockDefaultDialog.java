@@ -19,6 +19,7 @@ import android.widget.TextView;
 import com.mattprecious.swirl.SwirlView;
 
 import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
 /**
@@ -31,6 +32,8 @@ import javax.crypto.IllegalBlockSizeException;
 
 public class SurelockDefaultDialog extends DialogFragment implements SurelockFragment {
 
+    private static final String KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock.SurelockDefaultDialog.KEY_CIPHER_OP_MODE";
+    private static final String KEY_VALUE_TO_ENCRYPT = "com.smashingboxes.surelock.SurelockDefaultDialog.KEY_VALUE_TO_ENCRYPT";
     private static final String KEY_STYLE_ID = "com.smashingboxes.surelock.KEY_STYLE_ID";
 
     private static final long ERROR_TIMEOUT_MILLIS = 1600;
@@ -39,9 +42,11 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private FingerprintManager fingerprintManager;
     private FingerprintManager.CryptoObject cryptoObject;
     private String keyForDecryption;
+    private byte[] valueToEncrypt;
     private SurelockStorage storage;
     private SurelockFingerprintListener listener;
     private SurelockFingerprintUiHelper uiHelper;
+    private int cipherOperationMode;
     @StyleRes
     private int styleId;
 
@@ -49,14 +54,29 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private SwirlView iconView;
     private TextView statusTextView;
 
-    public static SurelockDefaultDialog newInstance(@StyleRes int styleId) {
-
+    public static SurelockDefaultDialog newInstance(int cipherOperationMode,
+                                                    @StyleRes int styleId) {
         Bundle args = new Bundle();
+        args.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
+        args.putInt(KEY_STYLE_ID, styleId);
 
         SurelockDefaultDialog fragment = new SurelockDefaultDialog();
-
-        args.putInt(KEY_STYLE_ID, styleId);
         fragment.setArguments(args);
+
+        return fragment;
+    }
+
+    public static SurelockDefaultDialog newInstance(int cipherOperationMode,
+                                                    @NonNull byte[] valueToEncrypt,
+                                                    @StyleRes int styleId) {
+        Bundle args = new Bundle();
+        args.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
+        args.putByteArray(KEY_VALUE_TO_ENCRYPT, valueToEncrypt);
+        args.putInt(KEY_STYLE_ID, styleId);
+
+        SurelockDefaultDialog fragment = new SurelockDefaultDialog();
+        fragment.setArguments(args);
+
         return fragment;
     }
 
@@ -66,7 +86,7 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
                      @NonNull String key, SurelockStorage storage) {
         this.cryptoObject = cryptoObject;
         this.fingerprintManager = fingerprintManager;
-        this.keyForDecryption = key;
+        this.keyForDecryption = key; //TODO need to be passing these as newInstance params... or figure a better way to do this
         this.storage = storage;
     }
 
@@ -80,8 +100,12 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         setRetainInstance(true);
 
         if (savedInstanceState != null) {
+            cipherOperationMode = savedInstanceState.getInt(KEY_CIPHER_OP_MODE);
+            valueToEncrypt = savedInstanceState.getByteArray(KEY_VALUE_TO_ENCRYPT);
             styleId = savedInstanceState.getInt(KEY_STYLE_ID);
         } else {
+            cipherOperationMode = getArguments().getInt(KEY_CIPHER_OP_MODE);
+            valueToEncrypt = getArguments().getByteArray(KEY_VALUE_TO_ENCRYPT);
             styleId = getArguments().getInt(KEY_STYLE_ID);
         }
 
@@ -195,6 +219,7 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
+        outState.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
         outState.putInt(KEY_STYLE_ID, styleId);
         super.onSaveInstanceState(outState);
     }
@@ -204,14 +229,24 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         iconView.postDelayed(new Runnable() {
             @Override
             public void run() {
-                //TODO figure out a way to not make user have to run decryption themselves here
-                byte[] encryptedValue = storage.get(keyForDecryption);
-                byte[] decryptedValue;
-                try {
-                    decryptedValue = cryptoObject.getCipher().doFinal(encryptedValue);
-                    listener.onFingerprintAuthenticated(decryptedValue);
-                } catch (BadPaddingException | IllegalBlockSizeException e) {
-                    listener.onFingerprintError(e.getMessage());
+                //TODO figure out a way to not make user have to run encryption/decryption themselves here
+                if (Cipher.ENCRYPT_MODE == cipherOperationMode) {
+                    try {
+                        final byte[] encryptedValue = cryptoObject.getCipher().doFinal(valueToEncrypt);
+                        storage.createOrUpdate(keyForDecryption, encryptedValue);
+                        listener.onFingerprintEnrolled();
+                    } catch (IllegalBlockSizeException | BadPaddingException e) {
+                        listener.onFingerprintError(e.getMessage());
+                    }
+                } else if (Cipher.DECRYPT_MODE == cipherOperationMode) {
+                    byte[] encryptedValue = storage.get(keyForDecryption);
+                    byte[] decryptedValue;
+                    try {
+                        decryptedValue = cryptoObject.getCipher().doFinal(encryptedValue);
+                        listener.onFingerprintAuthenticated(decryptedValue);
+                    } catch (BadPaddingException | IllegalBlockSizeException e) {
+                        listener.onFingerprintError(e.getMessage());
+                    }
                 }
                 dismiss();
             }
