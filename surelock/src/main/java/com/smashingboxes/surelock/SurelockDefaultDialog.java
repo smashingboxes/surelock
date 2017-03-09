@@ -220,6 +220,7 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     @Override
     public void onSaveInstanceState(Bundle outState) {
         outState.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
+        outState.putByteArray(KEY_VALUE_TO_ENCRYPT, valueToEncrypt);
         outState.putInt(KEY_STYLE_ID, styleId);
         super.onSaveInstanceState(outState);
     }
