@@ -104,7 +104,7 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
                 fingerprintCheckbox.setVisibility(View.VISIBLE);
                 fingerprintCheckbox.setChecked(false);
             } else {
-                surelock.loginWithFingerprint(KEY_CRE_DEN_TIALS, getFragmentManager(), FINGERPRINT_DIALOG_FRAGMENT_TAG, 0);
+                surelock.loginWithFingerprint(KEY_CRE_DEN_TIALS, getFragmentManager(), FINGERPRINT_DIALOG_FRAGMENT_TAG, R.style.SurelockDemoDialog);
                 fingerprintCheckbox.setVisibility(View.GONE);
             }
         }

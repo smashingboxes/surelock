@@ -114,8 +114,8 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         int dialogTheme = attrs.getResourceId(R.styleable.SurelockDefaultDialog_sl_dialog_theme, 0);
         attrs.recycle();
 
-        setStyle(DialogFragment.STYLE_NO_TITLE, dialogTheme == 0 ? android.R.style.Theme :
-                dialogTheme);
+        setStyle(DialogFragment.STYLE_NO_TITLE, dialogTheme == 0 ? R.style
+                .SurelockTheme_NoActionBar : dialogTheme);
     }
 
     @Override
