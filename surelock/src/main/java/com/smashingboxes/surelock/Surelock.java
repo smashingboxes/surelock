@@ -186,7 +186,7 @@ public class Surelock {
      * @param value value to be encrypted and stored
      */
     public void store(String key, byte[] value) {
-        initKeyStoreKey(Cipher.ENCRYPT_MODE);
+        initKeyStoreKey();
         Cipher cipher = initCipher(Cipher.ENCRYPT_MODE);
         try {
             final byte[] encryptedValue = cipher.doFinal(value);
@@ -229,7 +229,7 @@ public class Surelock {
                                           SurelockFragment surelockFragment,
                                           @NonNull FragmentManager fragmentManager,
                                           String fingerprintDialogFragmentTag) {
-        initKeyStoreKey(Cipher.ENCRYPT_MODE);
+        initKeyStoreKey();
         Cipher cipher;
         try {
             cipher = initCipher(Cipher.ENCRYPT_MODE);
@@ -416,23 +416,19 @@ public class Surelock {
     /**
      * Initialize a Key for our KeyStore.
      * NOTE: It won't recreate one if a valid key already exists.
-     *
-     * @param opmode the operation mode of this cipher (this is one of
-     * the following:
-     * <code>ENCRYPT_MODE</code>, <code>DECRYPT_MODE</code>)
      */
-    private void initKeyStoreKey(int opmode) {
+    private void initKeyStoreKey() {
         try {
             SecretKey secretKey = (SecretKey) keyStore.getKey(keyStoreAlias, null);
             // Check to see if we need to create a new KeyStore key
             if (secretKey != null) {
                 try {
                     if (encryptionType == ASYMMETRIC) {
-                        getCipherInstance().init(opmode, secretKey);
+                        getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey);
                     } else {
                         byte[] encryptionIv = getEncryptionIv();
                         if (encryptionIv != null) {
-                            getCipherInstance().init(opmode, secretKey, new IvParameterSpec(encryptionIv));
+                            getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(encryptionIv));
                         }
                     }
                     return;
