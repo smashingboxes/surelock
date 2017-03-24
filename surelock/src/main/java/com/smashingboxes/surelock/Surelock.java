@@ -13,6 +13,7 @@ import android.security.keystore.KeyProperties;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.annotation.StyleRes;
 import android.util.Log;
 import android.widget.Toast;
@@ -89,13 +90,12 @@ public class Surelock {
      *
      * @return A new Surelock instance, or null if the device does not support fingerprint auth
      */
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public static Surelock initialize(Context context, SurelockStorage storage, String keystoreAlias) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return null;
-        }
         return new Surelock(context, storage, keystoreAlias);
     }
 
+    //TODO: We might want to make this private to enforce API version on initialize()
     public Surelock(Context context, SurelockStorage storage, String keystoreAlias) {
         if (context instanceof SurelockFingerprintListener) {
             this.listener = (SurelockFingerprintListener) context;
@@ -120,6 +120,7 @@ public class Surelock {
      * @return true if fingerprint hardware is detected
      */
     @SuppressWarnings({"MissingPermission"})
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public static boolean hasFingerprintHardware(Context context) {
         return context.getSystemService(FingerprintManager.class).isHardwareDetected();
     }
@@ -130,6 +131,7 @@ public class Surelock {
      * @return true if fingerprints have been enrolled. Otherwise, false.
      */
     @SuppressWarnings({"MissingPermission"})
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public static boolean hasUserEnrolledFingerprints(Context context) {
         return context.getSystemService(FingerprintManager.class).hasEnrolledFingerprints();
     }
@@ -140,6 +142,7 @@ public class Surelock {
      *
      * @return true if user has set one of these screen lock methods or if the SIM card is locked.
      */
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public static boolean hasUserEnabledSecureLock(Context context) {
         KeyguardManager keyguardManager = context.getSystemService(KeyguardManager.class);
         return keyguardManager.isKeyguardSecure();
@@ -153,10 +156,8 @@ public class Surelock {
      *                      It is recommended to set this to true.
      * @return true if user has fingerprint hardware, has enabled secure lock, and has enrolled fingerprints
      */
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public static boolean fingerprintAuthIsSetUp(Context context, boolean showMessaging) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return false;
-        }
         if (!hasFingerprintHardware(context)) {
             return false;
         }
