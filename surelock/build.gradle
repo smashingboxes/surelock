@@ -18,6 +18,6 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:25.2.0'
+    compile 'com.android.support:appcompat-v7:25.3.0'
     compile 'com.mattprecious.swirl:swirl:1.0.0'
 }
