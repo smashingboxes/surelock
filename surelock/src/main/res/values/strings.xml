@@ -1,5 +1,5 @@
 <resources>
-    <string name="fingerprint_not_recognized">Fingerprint not recognized. Try again</string>
+    <string name="fingerprint_not_recognized">Fingerprint not recognized. Try again.</string>
     <string name="fingerprint_success">Fingerprint recognized</string>
     <string name="fingerprint_description">Confirm fingerprint to continue</string>
     <string name="fingerprint_hint">Touch sensor</string>
@@ -7,4 +7,5 @@
     <string name="password">Password</string>
     <string name="error_toast_user_enable_securelock">Secure lock screen hasn\'t been set up.\n Go to \'Settings -> Security -> Fingerprint\' to set up a fingerprint</string>
     <string name="error_toast_user_enroll_fingerprints">Go to \'Settings -> Security -> Fingerprint\' and register at least one fingerprint</string>
+    <string name="sl_sign_in">Sign in</string>
 </resources>
