@@ -20,7 +20,12 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
 /**
- * Created by NicholasCook on 3/17/17.
+ * Created by Nicholas Cook on 3/17/17.
+ * <p>
+ *     A login dialog which follows standard Material Design guidelines. It uses
+ *     fingerprint APIs to authenticate the user, and falls back to password
+ *     authentication if fingerprint is not available.
+ * </p>
  */
 
 public class SurelockMaterialDialog extends DialogFragment implements SurelockFragment {
