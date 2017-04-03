@@ -22,6 +22,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -30,7 +31,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
@@ -38,6 +41,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -185,9 +189,14 @@ public class Surelock {
      * @param key pointer in storage to encrypted value
      * @param value value to be encrypted and stored
      */
-    public void store(String key, byte[] value) {
+    public void store(String key, byte[] value) throws SurelockException {
         initKeyStoreKey();
-        Cipher cipher = initCipher(Cipher.ENCRYPT_MODE);
+        Cipher cipher;
+        try {
+            cipher = initCipher(Cipher.ENCRYPT_MODE);
+        } catch (InvalidKeyException | UnrecoverableKeyException | KeyStoreException e) {
+            throw new SurelockException("Failed to init Cipher for encryption", null);
+        }
         try {
             final byte[] encryptedValue = cipher.doFinal(value);
             storage.createOrUpdate(key, encryptedValue);
@@ -208,7 +217,7 @@ public class Surelock {
     public void enrollFingerprintAndStore(String key, byte[] valueToEncrypt,
                                           @NonNull FragmentManager fragmentManager,
                                           String fingerprintDialogFragmentTag,
-                                          @StyleRes int styleId) {
+                                          @StyleRes int styleId) throws SurelockException {
         SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
         if (fragment == null) {
             fragment = SurelockDefaultDialog.newInstance(Cipher.ENCRYPT_MODE, valueToEncrypt, styleId);
@@ -228,11 +237,15 @@ public class Surelock {
     public void enrollFingerprintAndStore(String key,
                                           SurelockFragment surelockFragment,
                                           @NonNull FragmentManager fragmentManager,
-                                          String fingerprintDialogFragmentTag) {
+                                          String fingerprintDialogFragmentTag) throws SurelockException {
         initKeyStoreKey();
         Cipher cipher;
         try {
-            cipher = initCipher(Cipher.ENCRYPT_MODE);
+            try {
+                cipher = initCipher(Cipher.ENCRYPT_MODE);
+            } catch (InvalidKeyException | UnrecoverableKeyException | KeyStoreException e) {
+                throw new SurelockException("Failed to init Cipher for encryption", e);
+            }
         } catch (RuntimeException e) {
             listener.onFingerprintError(null); //TODO we need better management of all of these listeners passed everywhere.
             return;
@@ -241,12 +254,7 @@ public class Surelock {
         if (cipher != null) {
             showFingerprintDialog(key, cipher, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
         } else {
-            // TODO
-            // This happens if the lock screen has been disabled or a fingerprint got
-            // enrolled. Thus show the dialog to authenticate with their password first
-            // and ask the user if they want to authenticate with fingerprints in the
-            // future
-//            showFingerprintDialog(cipher, NEW_FINGERPRINT_ENROLLED, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
+            throw new SurelockException("Failed to init Cipher for encryption", null);
         }
     }
 
@@ -261,7 +269,7 @@ public class Surelock {
     public void loginWithFingerprint(@NonNull String key,
                                      @NonNull FragmentManager fragmentManager,
                                      String fingerprintDialogFragmentTag,
-                                     @StyleRes int styleId) {
+                                     @StyleRes int styleId) throws SurelockInvalidKeyException {
         SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
         if (fragment == null) {
             fragment = SurelockDefaultDialog.newInstance(Cipher.DECRYPT_MODE, styleId);
@@ -280,10 +288,14 @@ public class Surelock {
     public void loginWithFingerprint(@NonNull String key,
                                      SurelockFragment surelockFragment,
                                      @NonNull FragmentManager fragmentManager,
-                                     String fingerprintDialogFragmentTag) {
+                                     String fingerprintDialogFragmentTag) throws SurelockInvalidKeyException {
         Cipher cipher;
         try {
             cipher = initCipher(Cipher.DECRYPT_MODE);
+        } catch (InvalidKeyException | UnrecoverableKeyException | KeyStoreException e) {
+            // Key may be invalid due to new fingerprint enrollment
+            // Try taking the user back through a new enrollment
+            throw new SurelockInvalidKeyException("Failed to init Cipher. Key may be invalidated. Try re-enrolling.", null);
         } catch (RuntimeException e) {
             listener.onFingerprintError(null); //TODO we need better management of all of these listeners passed everywhere.
             return;
@@ -292,12 +304,7 @@ public class Surelock {
         if (cipher != null) {
             showFingerprintDialog(key, cipher, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
         } else {
-            // TODO
-            // This happens if the lock screen has been disabled or a fingerprint got
-            // enrolled. Thus show the dialog to authenticate with their password first
-            // and ask the user if they want to authenticate with fingerprints in the
-            // future
-//            showFingerprintDialog(cipher, NEW_FINGERPRINT_ENROLLED, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
+            throw new SurelockInvalidKeyException("Failed to init Cipher. Key may be invalidated. Try re-enrolling.", null);
         }
     }
 
@@ -338,7 +345,7 @@ public class Surelock {
         }
     }
 
-    private Cipher getCipherInstance() throws GeneralSecurityException {
+    private Cipher getCipherInstance() throws NoSuchAlgorithmException, NoSuchPaddingException {
         if (encryptionType == ASYMMETRIC) {
             return Cipher.getInstance(
                     KeyProperties.KEY_ALGORITHM_RSA + "/"
@@ -403,13 +410,13 @@ public class Surelock {
         }
     }
 
-    private PublicKey getPublicKey() throws GeneralSecurityException {
+    private PublicKey getPublicKey() throws KeyStoreException, InvalidKeySpecException {
         PublicKey publicKey = keyStore.getCertificate(keyStoreAlias).getPublicKey();
         KeySpec spec = new X509EncodedKeySpec(publicKey.getEncoded());
         return keyFactory.generatePublic(spec);
     }
 
-    private PrivateKey getPrivateKey() throws GeneralSecurityException {
+    private PrivateKey getPrivateKey() throws NoSuchAlgorithmException, UnrecoverableKeyException, KeyStoreException {
         return (PrivateKey) keyStore.getKey(keyStoreAlias, null);
     }
 
@@ -454,7 +461,7 @@ public class Surelock {
      * <code>ENCRYPT_MODE</code>, <code>DECRYPT_MODE</code>)
      * @return Cipher object to be used for encryption
      */
-    private Cipher initCipher(int opmode) {
+    private Cipher initCipher(int opmode) throws InvalidKeyException, UnrecoverableKeyException, KeyStoreException {
         Cipher cipher;
         try {
             cipher = getCipherInstance();
@@ -469,7 +476,7 @@ public class Surelock {
                     cipher.init(opmode, secretKey, new IvParameterSpec(getEncryptionIv()));
                 }
             }
-        } catch (GeneralSecurityException e) {
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidAlgorithmParameterException | InvalidKeySpecException e) {
             throw new SurelockException("Surelock: Failed to prepare Cipher for encryption", e);
         }
         return cipher;
