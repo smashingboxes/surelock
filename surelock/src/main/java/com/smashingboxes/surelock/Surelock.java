@@ -432,13 +432,14 @@ public class Surelock {
                 try {
                     if (encryptionType == ASYMMETRIC) {
                         getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey);
+                        return;
                     } else {
                         byte[] encryptionIv = getEncryptionIv();
                         if (encryptionIv != null) {
                             getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(encryptionIv));
+                            return;
                         }
                     }
-                    return;
                 } catch (KeyPermanentlyInvalidatedException e) {
                     Log.d(TAG, "Keys were invalidated. Creating new key...");
                 }
