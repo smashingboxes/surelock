@@ -25,6 +25,7 @@ import android.widget.Toast;
 import com.smashingboxes.surelock.SharedPreferencesStorage;
 import com.smashingboxes.surelock.Surelock;
 import com.smashingboxes.surelock.SurelockFingerprintListener;
+import com.smashingboxes.surelock.SurelockInvalidKeyException;
 import com.smashingboxes.surelock.SurelockStorage;
 
 import java.io.UnsupportedEncodingException;
@@ -104,7 +105,11 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
                 fingerprintCheckbox.setVisibility(View.VISIBLE);
                 fingerprintCheckbox.setChecked(false);
             } else {
-                surelock.loginWithFingerprint(KEY_CRE_DEN_TIALS, getFragmentManager(), FINGERPRINT_DIALOG_FRAGMENT_TAG, R.style.SurelockDemoDialog);
+                try {
+                    surelock.loginWithFingerprint(KEY_CRE_DEN_TIALS, getFragmentManager(), FINGERPRINT_DIALOG_FRAGMENT_TAG, R.style.SurelockDemoDialog);
+                } catch (SurelockInvalidKeyException e) {
+                    //TODO show a dialog telling user to re-enter their credentials because their fingerprints have changed.
+                }
                 fingerprintCheckbox.setVisibility(View.GONE);
             }
         }
