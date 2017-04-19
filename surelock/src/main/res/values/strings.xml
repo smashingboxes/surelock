@@ -8,4 +8,6 @@
     <string name="error_toast_user_enable_securelock">Secure lock screen hasn\'t been set up.\n Go to \'Settings -> Security -> Fingerprint\' to set up a fingerprint</string>
     <string name="error_toast_user_enroll_fingerprints">Go to \'Settings -> Security -> Fingerprint\' and register at least one fingerprint</string>
     <string name="sl_sign_in">Sign in</string>
+    <string name="sl_login_error">Fingerprint Login Error</string>
+    <string name="sl_re_enroll">The fingerprints enrolled on this device have changed. Please re-enter your credentials to enable fingerprint login.</string>
 </resources>
