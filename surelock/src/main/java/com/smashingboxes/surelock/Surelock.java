@@ -14,6 +14,7 @@ import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.StyleRes;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -207,26 +208,6 @@ public class Surelock {
 
     /**
      * Enroll a fingerprint, encrypt a value, and store the value at the specified key
-     *
-     * @param key pointer in storage to encrypted value
-     * @param valueToEncrypt value to be encrypted and stored
-     * @param fragmentManager FragmentManger used to load the dialog fragment
-     * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
-     * @param styleId resource id of the style set for custom dialog attributes
-     */
-    public void enrollFingerprintAndStore(String key, byte[] valueToEncrypt,
-                                          @NonNull FragmentManager fragmentManager,
-                                          String fingerprintDialogFragmentTag,
-                                          @StyleRes int styleId) throws SurelockException {
-        SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
-        if (fragment == null) {
-            fragment = SurelockDefaultDialog.newInstance(Cipher.ENCRYPT_MODE, valueToEncrypt, styleId);
-        }
-        enrollFingerprintAndStore(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
-    }
-
-    /**
-     * Enroll a fingerprint, encrypt a value, and store the value at the specified key
      * Use this if you want to use your own custom dialog rather than Surelock's default dialog
      *
      * @param key pointer in storage to encrypted value
@@ -234,7 +215,7 @@ public class Surelock {
      * @param fragmentManager FragmentManger used to load the dialog fragment
      * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
      */
-    public void enrollFingerprintAndStore(String key,
+    private void enrollFingerprintAndStore(String key,
                                           SurelockFragment surelockFragment,
                                           @NonNull FragmentManager fragmentManager,
                                           String fingerprintDialogFragmentTag) throws SurelockException {
@@ -259,25 +240,6 @@ public class Surelock {
     }
 
     /**
-     * Login with the default Surelock dialog fragment
-     *
-     * @param key                          pointer in storage to encrypted value
-     * @param fragmentManager              FragmentManger used to load the dialog fragment
-     * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
-     * @param styleId                      resource id of the style set for custom dialog attributes
-     */
-    public void loginWithFingerprint(@NonNull String key,
-                                     @NonNull FragmentManager fragmentManager,
-                                     String fingerprintDialogFragmentTag,
-                                     @StyleRes int styleId) throws SurelockInvalidKeyException {
-        SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
-        if (fragment == null) {
-            fragment = SurelockDefaultDialog.newInstance(Cipher.DECRYPT_MODE, styleId);
-        }
-        loginWithFingerprint(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
-    }
-
-    /**
      * Login with a custom dialog fragment
      *
      * @param key pointer in storage to encrypted value
@@ -285,7 +247,7 @@ public class Surelock {
      * @param fragmentManager FragmentManger used to load the dialog fragment
      * @param fingerprintDialogFragmentTag tag associated with the dialog fragment
      */
-    public void loginWithFingerprint(@NonNull String key,
+    private void loginWithFingerprint(@NonNull String key,
                                      SurelockFragment surelockFragment,
                                      @NonNull FragmentManager fragmentManager,
                                      String fingerprintDialogFragmentTag) throws SurelockInvalidKeyException {
@@ -495,6 +457,144 @@ public class Surelock {
     @Nullable
     private byte[] getEncryptionIv() {
         return storage.get(KEY_INIT_IALIZ_ATION_VEC_TOR);
+    }
+
+    public static class SurelockDialogBuilder {
+
+        private String key;
+        private FragmentManager fragmentManager;
+        private String fingerprintDialogFragmentTag;
+        private SurelockFragment surelockDialog;
+        private boolean useDefault;
+        @StyleRes
+        private int styleId;
+        private String keystoreAlias;
+        private SurelockStorage storage;
+
+        public SurelockDialogBuilder(@NonNull String key, @NonNull FragmentManager
+                fragmentManager, @NonNull String fingerprintDialogFragmentTag) {
+            this.key = key;
+            this.fragmentManager = fragmentManager;
+            this.fingerprintDialogFragmentTag = fingerprintDialogFragmentTag;
+        }
+
+        /**
+         * Indicates that fingerprint login should be prompted using the SurelockDefaultDialog
+         * class. This is a fullscreen dialog that can be styled to match an app's theme.
+         *
+         * @param styleId The style resource file to be used for styling the dialog
+         * @return This SurelockDialogBuilder to allow for method chaining
+         */
+        public SurelockDialogBuilder withDefaultDialog(@StyleRes int styleId) {
+            useDefault = true;
+            surelockDialog = null;
+            this.styleId = styleId;
+            return this;
+        }
+
+        /**
+         * Indicates that fingerprint login should be prompted using the SurelockMaterialDialog.
+         * This dialog follows Material Design guidelines.
+         *
+         * @return This SurelockDialogBuilder to allow for method chaining
+         */
+        public SurelockDialogBuilder withMaterialDialog() {
+            useDefault = false;
+            surelockDialog = null;
+            return this;
+        }
+
+        /**
+         * Indicates that fingerprint login should be prompted using the given dialog.
+         *
+         * @param surelockDialog The custom dialog to use for fingerprint login
+         * @return This SurelockDialogBuilder to allow for method chaining
+         */
+        public SurelockDialogBuilder withCustomDialog(@NonNull SurelockFragment surelockDialog) {
+            this.surelockDialog = surelockDialog;
+            return this;
+        }
+
+        /**
+         * Indicates the alias to use for the keystore when using fingerprint login. This method
+         * MUST be called before enrolling and logging in.
+         *
+         * @param keystoreAlias The keystore alias to use
+         * @return This SurelockDialogBuilder to allow for method chaining
+         */
+        public SurelockDialogBuilder withKeystoreAlias(@NonNull String keystoreAlias) {
+            this.keystoreAlias = keystoreAlias;
+            return this;
+        }
+
+        /**
+         * Indicates the SurelockStorage instance to use with fingerprint login. This method MUST
+         * be called before enrolling and logging in.
+         *
+         * @param storage The SurelockStorage instance to use
+         * @return This SurelockDialogBuilder to allow for method chaining
+         */
+        public SurelockDialogBuilder withSurelockStorage(@NonNull SurelockStorage storage) {
+            this.storage = storage;
+            return this;
+        }
+
+        /**
+         * Enroll a fingerprint and encrypt the given value, if desired
+         *
+         * @param valueToEncrypt The optional value to be encrypted
+         * @param context        The context used to create the Surelock instance
+         */
+        public void enrollFingerprintAndStore(Context context, @Nullable byte[] valueToEncrypt) {
+            checkFields();
+            Surelock surelock = Surelock.initialize(context, storage, keystoreAlias);
+            if (surelock != null) {
+                surelock.enrollFingerprintAndStore(key, getSurelockDialog(true, valueToEncrypt),
+                        fragmentManager, fingerprintDialogFragmentTag);
+            }
+        }
+
+        /**
+         * Log in using fingerprint authentication
+         *
+         * @param context The context used to create the Surelock instance
+         */
+        public void loginWithFingerprint(Context context) {
+            checkFields();
+            Surelock surelock = Surelock.initialize(context, storage, keystoreAlias);
+            if (surelock != null) {
+                surelock.loginWithFingerprint(key, getSurelockDialog(false, null), fragmentManager,
+                        fingerprintDialogFragmentTag);
+            }
+        }
+
+        private void checkFields() {
+            if (TextUtils.isEmpty(keystoreAlias)) {
+                throw new IllegalStateException("The keystore alias cannot be empty.");
+            }
+            if (storage == null) {
+                throw new IllegalStateException("SurelockStorage cannot be null.");
+            }
+        }
+
+        private SurelockFragment getSurelockDialog(boolean isEnrolling, @Nullable byte[]
+                valueToEncrypt) {
+            if (surelockDialog != null) {
+                return surelockDialog;
+            } else {
+                if (useDefault) {
+                    surelockDialog = SurelockDefaultDialog.newInstance(isEnrolling ? Cipher
+                            .ENCRYPT_MODE : Cipher.DECRYPT_MODE, valueToEncrypt == null ? new
+                            byte[]{} : valueToEncrypt, styleId);
+                } else {
+                    surelockDialog = SurelockMaterialDialog.newInstance(isEnrolling ? Cipher
+                            .ENCRYPT_MODE : Cipher.DECRYPT_MODE, valueToEncrypt == null ? new
+                            byte[]{} : valueToEncrypt);
+                }
+                return surelockDialog;
+            }
+        }
+
     }
 
 }
