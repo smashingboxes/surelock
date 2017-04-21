@@ -33,7 +33,6 @@ import javax.crypto.IllegalBlockSizeException;
 public class SurelockDefaultDialog extends DialogFragment implements SurelockFragment {
 
     private static final String KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock.SurelockDefaultDialog.KEY_CIPHER_OP_MODE";
-    private static final String KEY_VALUE_TO_ENCRYPT = "com.smashingboxes.surelock.SurelockDefaultDialog.KEY_VALUE_TO_ENCRYPT";
     private static final String KEY_STYLE_ID = "com.smashingboxes.surelock.KEY_STYLE_ID";
 
     private static final long ERROR_TIMEOUT_MILLIS = 1600;
@@ -54,24 +53,10 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private SwirlView iconView;
     private TextView statusTextView;
 
-    public static SurelockDefaultDialog newInstance(int cipherOperationMode,
+    static SurelockDefaultDialog newInstance(int cipherOperationMode,
                                                     @StyleRes int styleId) {
         Bundle args = new Bundle();
         args.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
-        args.putInt(KEY_STYLE_ID, styleId);
-
-        SurelockDefaultDialog fragment = new SurelockDefaultDialog();
-        fragment.setArguments(args);
-
-        return fragment;
-    }
-
-    public static SurelockDefaultDialog newInstance(int cipherOperationMode,
-                                                    @NonNull byte[] valueToEncrypt,
-                                                    @StyleRes int styleId) {
-        Bundle args = new Bundle();
-        args.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
-        args.putByteArray(KEY_VALUE_TO_ENCRYPT, valueToEncrypt);
         args.putInt(KEY_STYLE_ID, styleId);
 
         SurelockDefaultDialog fragment = new SurelockDefaultDialog();
@@ -83,11 +68,12 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     @Override
     public void init(FingerprintManager fingerprintManager,
                      FingerprintManager.CryptoObject cryptoObject,
-                     @NonNull String key, SurelockStorage storage) {
+                     @NonNull String key, SurelockStorage storage, byte[] valueToEncrypt) {
         this.cryptoObject = cryptoObject;
         this.fingerprintManager = fingerprintManager;
         this.keyForDecryption = key; //TODO need to be passing these as newInstance params... or figure a better way to do this
         this.storage = storage;
+        this.valueToEncrypt = valueToEncrypt;
     }
 
     @Override
@@ -101,11 +87,9 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
 
         if (savedInstanceState != null) {
             cipherOperationMode = savedInstanceState.getInt(KEY_CIPHER_OP_MODE);
-            valueToEncrypt = savedInstanceState.getByteArray(KEY_VALUE_TO_ENCRYPT);
             styleId = savedInstanceState.getInt(KEY_STYLE_ID);
         } else {
             cipherOperationMode = getArguments().getInt(KEY_CIPHER_OP_MODE);
-            valueToEncrypt = getArguments().getByteArray(KEY_VALUE_TO_ENCRYPT);
             styleId = getArguments().getInt(KEY_STYLE_ID);
         }
 
@@ -220,7 +204,6 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     @Override
     public void onSaveInstanceState(Bundle outState) {
         outState.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
-        outState.putByteArray(KEY_VALUE_TO_ENCRYPT, valueToEncrypt);
         outState.putInt(KEY_STYLE_ID, styleId);
         super.onSaveInstanceState(outState);
     }
