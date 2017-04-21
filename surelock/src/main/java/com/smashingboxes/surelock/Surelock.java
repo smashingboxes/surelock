@@ -96,7 +96,6 @@ public class Surelock {
     private boolean useDefault;
     @StyleRes
     private int styleId;
-    private String key;
 
     static Surelock initialize(@NonNull Builder builder) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
@@ -120,7 +119,6 @@ public class Surelock {
         this.fragmentManager = builder.fragmentManager;
         this.useDefault = builder.useDefault;
         this.styleId = builder.styleId;
-        this.key = builder.key;
 
         try {
             setUpKeyStoreForEncryption();
@@ -220,9 +218,12 @@ public class Surelock {
 
     /**
      * Enroll a fingerprint, encrypt a value, and store the value at the specified key
-     * Use this if you want to use your own custom dialog rather than Surelock's default dialog
+     *
+     * @param key            he key where encrypted values are stored
+     * @param valueToEncrypt The value to encrypt and store
+     * @throws SurelockException
      */
-    public void enrollFingerprintAndStore(@NonNull byte[] valueToEncrypt) throws SurelockException {
+    public void enrollFingerprintAndStore(@NonNull String key, @NonNull byte[] valueToEncrypt) throws SurelockException {
         initKeyStoreKey();
         Cipher cipher;
         try {
@@ -237,16 +238,19 @@ public class Surelock {
         }
 
         if (cipher != null) {
-            showFingerprintDialog(cipher, getSurelockFragment(true), valueToEncrypt);
+            showFingerprintDialog(key, cipher, getSurelockFragment(true), valueToEncrypt);
         } else {
             throw new SurelockException("Failed to init Cipher for encryption", null);
         }
     }
 
     /**
-     * Login with a custom dialog fragment
+     * Log in using fingerprint authentication
+     *
+     * @param key The key where encrypted values are stored
+     * @throws SurelockInvalidKeyException If the cipher could not be initialized
      */
-    public void loginWithFingerprint() throws SurelockInvalidKeyException {
+    public void loginWithFingerprint(@NonNull String key) throws SurelockInvalidKeyException {
         Cipher cipher;
         try {
             cipher = initCipher(Cipher.DECRYPT_MODE);
@@ -260,7 +264,7 @@ public class Surelock {
         }
 
         if (cipher != null) {
-            showFingerprintDialog(cipher, getSurelockFragment(false), null);
+            showFingerprintDialog(key, cipher, getSurelockFragment(false), null);
         } else {
             throw new SurelockInvalidKeyException("Failed to init Cipher. Key may be invalidated. Try re-enrolling.", null);
         }
@@ -279,8 +283,8 @@ public class Surelock {
         }
     }
 
-    private void showFingerprintDialog(@NonNull Cipher cipher, SurelockFragment surelockFragment,
-                                       @Nullable byte[] valueToEncrypt) {
+    private void showFingerprintDialog(String key, @NonNull Cipher cipher, SurelockFragment
+            surelockFragment, @Nullable byte[] valueToEncrypt) {
         surelockFragment.init(fingerprintManager, new FingerprintManager.CryptoObject(cipher),
                 key, storage, valueToEncrypt);
         surelockFragment.show(fragmentManager, surelockFragmentTag);
@@ -470,7 +474,6 @@ public class Surelock {
     public static class Builder {
 
         private Context context;
-        private String key;
         private FragmentManager fragmentManager;
         private String surelockFragmentTag;
         private SurelockFragment surelockFragment;
@@ -518,18 +521,6 @@ public class Surelock {
          */
         public Builder withCustomDialog(@NonNull SurelockFragment surelockFragment) {
             this.surelockFragment = surelockFragment;
-            return this;
-        }
-
-        /**
-         * Indicates the key that will point to the stored encrypted values. This method MUST be
-         * called before enrolling and logging in.
-         *
-         * @param key The key to use
-         * @return This Builder to allow for method chaining
-         */
-        public Builder withKey(@NonNull String key) {
-            this.key = key;
             return this;
         }
 
@@ -601,9 +592,6 @@ public class Surelock {
             }
             if (fragmentManager == null) {
                 throw new IllegalStateException("The fragment manager cannot be empty.");
-            }
-            if (TextUtils.isEmpty(key)) {
-                throw new IllegalStateException("The key cannot be empty");
             }
         }
 

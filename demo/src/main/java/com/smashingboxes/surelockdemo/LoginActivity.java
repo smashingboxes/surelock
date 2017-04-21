@@ -107,7 +107,7 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
                 fingerprintCheckbox.setChecked(false);
             } else {
                 try {
-                    getSurelock().loginWithFingerprint();
+                    getSurelock().loginWithFingerprint(KEY_CRE_DEN_TIALS);
                 } catch (SurelockInvalidKeyException e) {
                     surelockStorage.clearAll();
                     showFingerprintLoginInvalidated();
@@ -122,7 +122,6 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
             surelock = new Surelock.Builder(this)
                     .withDefaultDialog(R.style.SurelockDemoDialog)
                     .withKeystoreAlias(KEYSTORE_KEY_ALIAS)
-                    .withKey(KEY_CRE_DEN_TIALS)
                     .withFragmentManager(getFragmentManager())
                     .withSurelockFragmentTag(FINGERPRINT_DIALOG_FRAGMENT_TAG)
                     .withSurelockStorage(surelockStorage)
@@ -294,8 +293,8 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
             showProgress(false);
             if (withFingerprintEnrollment) {
                 try {
-                    getSurelock().enrollFingerprintAndStore(getFormattedCredentialsForEncryption
-                            (params[0], params[1]));
+                    getSurelock().enrollFingerprintAndStore(KEY_CRE_DEN_TIALS,
+                            getFormattedCredentialsForEncryption(params[0], params[1]));
                 } catch (UnsupportedEncodingException e) {
                     Toast.makeText(LoginActivity.this, "Failed to encrypt the login", Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Failed to encrypt the login" + e.getMessage());
