@@ -3,6 +3,7 @@ package com.smashingboxes.surelockdemo;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -10,6 +11,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.TextInputEditText;
 import android.support.design.widget.TextInputLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
@@ -64,7 +66,6 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         surelockStorage = new SharedPreferencesStorage(this, SHARED_PREFS_FILE_NAME);
-        surelock = Surelock.initialize(this, surelockStorage, KEYSTORE_KEY_ALIAS);
         setUpViews();
     }
 
@@ -106,13 +107,39 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
                 fingerprintCheckbox.setChecked(false);
             } else {
                 try {
-                    surelock.loginWithFingerprint(KEY_CRE_DEN_TIALS, getFragmentManager(), FINGERPRINT_DIALOG_FRAGMENT_TAG, R.style.SurelockDemoDialog);
+                    getSurelock().loginWithFingerprint(KEY_CRE_DEN_TIALS);
                 } catch (SurelockInvalidKeyException e) {
-                    //TODO show a dialog telling user to re-enter their credentials because their fingerprints have changed.
+                    surelockStorage.clearAll();
+                    showFingerprintLoginInvalidated();
                 }
                 fingerprintCheckbox.setVisibility(View.GONE);
             }
         }
+    }
+
+    private Surelock getSurelock() {
+        if (surelock == null) {
+            surelock = new Surelock.Builder(this)
+                    .withDefaultDialog(R.style.SurelockDemoDialog)
+                    .withKeystoreAlias(KEYSTORE_KEY_ALIAS)
+                    .withFragmentManager(getFragmentManager())
+                    .withSurelockFragmentTag(FINGERPRINT_DIALOG_FRAGMENT_TAG)
+                    .withSurelockStorage(surelockStorage)
+                    .build();
+        }
+        return surelock;
+    }
+
+    private void showFingerprintLoginInvalidated() {
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        dialog.setTitle(R.string.sl_login_error)
+                .setMessage(R.string.sl_re_enroll)
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).show();
     }
 
     @NonNull
@@ -266,9 +293,8 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
             showProgress(false);
             if (withFingerprintEnrollment) {
                 try {
-                    surelock.enrollFingerprintAndStore(KEY_CRE_DEN_TIALS,
-                            getFormattedCredentialsForEncryption(params[0], params[1]),
-                            getFragmentManager(), FINGERPRINT_DIALOG_FRAGMENT_TAG, 0);
+                    getSurelock().enrollFingerprintAndStore(KEY_CRE_DEN_TIALS,
+                            getFormattedCredentialsForEncryption(params[0], params[1]));
                 } catch (UnsupportedEncodingException e) {
                     Toast.makeText(LoginActivity.this, "Failed to encrypt the login", Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Failed to encrypt the login" + e.getMessage());

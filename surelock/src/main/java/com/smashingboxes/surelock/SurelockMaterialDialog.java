@@ -32,8 +32,6 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
 
     private static final String KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock" +
             ".SurelockMaterialDialog.KEY_CIPHER_OP_MODE";
-    private static final String KEY_VALUE_TO_ENCRYPT = "com.smashingboxes.surelock" +
-            ".SurelockMaterialDialog.KEY_VALUE_TO_ENCRYPT";
 
     private SwirlView swirlView;
     private TextView messageView;
@@ -50,22 +48,10 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
     private static final long ERROR_TIMEOUT_MILLIS = 1600;
     private static final long SUCCESS_DELAY_MILLIS = 1300;
 
-    public static SurelockMaterialDialog newInstance(int cipherOperationMode) {
+    static SurelockMaterialDialog newInstance(int cipherOperationMode) {
 
         Bundle args = new Bundle();
         args.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
-
-        SurelockMaterialDialog fragment = new SurelockMaterialDialog();
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    public static SurelockMaterialDialog newInstance(int cipherOperationMode, @NonNull byte[]
-            valueToEncrypt) {
-
-        Bundle args = new Bundle();
-        args.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
-        args.putByteArray(KEY_VALUE_TO_ENCRYPT, valueToEncrypt);
 
         SurelockMaterialDialog fragment = new SurelockMaterialDialog();
         fragment.setArguments(args);
@@ -94,10 +80,8 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
 
         if (savedInstanceState != null) {
             cipherOperationMode = savedInstanceState.getInt(KEY_CIPHER_OP_MODE);
-            valueToEncrypt = savedInstanceState.getByteArray(KEY_VALUE_TO_ENCRYPT);
         } else {
             cipherOperationMode = getArguments().getInt(KEY_CIPHER_OP_MODE);
-            valueToEncrypt = getArguments().getByteArray(KEY_VALUE_TO_ENCRYPT);
         }
 
         setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Light_Dialog);
@@ -150,17 +134,17 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
     @Override
     public void onSaveInstanceState(Bundle outState) {
         outState.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
-        outState.putByteArray(KEY_VALUE_TO_ENCRYPT, valueToEncrypt);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     public void init(FingerprintManager fingerprintManager, FingerprintManager.CryptoObject
-            cryptoObject, @NonNull String key, SurelockStorage storage) {
+            cryptoObject, @NonNull String key, SurelockStorage storage, byte[] valueToEncrypt) {
         this.fingerprintManager = fingerprintManager;
         this.cryptoObject = cryptoObject;
         this.keyForDecryption = key;
         this.storage = storage;
+        this.valueToEncrypt = valueToEncrypt;
     }
 
     @Override
