@@ -1,7 +1,7 @@
 package com.smashingboxes.surelock;
 
-import android.hardware.fingerprint.FingerprintManager;
-import android.os.CancellationSignal;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
+import android.support.v4.os.CancellationSignal;
 
 /**
  * Created by Tyler McCraw on 2/17/17.
@@ -11,26 +11,26 @@ import android.os.CancellationSignal;
  * </p>
  */
 
-public class SurelockFingerprintUiHelper extends FingerprintManager.AuthenticationCallback {
+public class SurelockFingerprintUiHelper extends FingerprintManagerCompat.AuthenticationCallback {
 
-    private final FingerprintManager fingerprintManager;
+    private final FingerprintManagerCompat fingerprintManager;
     private final SurelockFragment callback;
     private CancellationSignal cancellationSignal;
     private boolean selfCancelled;
 
-    SurelockFingerprintUiHelper(FingerprintManager fingerprintManager, SurelockFragment callback) {
+    SurelockFingerprintUiHelper(FingerprintManagerCompat fingerprintManager, SurelockFragment callback) {
         this.fingerprintManager = fingerprintManager;
         this.callback = callback;
     }
 
-    public void startListening(FingerprintManager.CryptoObject cryptoObject) {
+    public void startListening(FingerprintManagerCompat.CryptoObject cryptoObject) {
         cancellationSignal = new CancellationSignal();
         selfCancelled = false;
 
         //TODO pass in a handler here for background authentication?
         //TODO take a look at per-user FingerprintManager.authenticate(..., userId) call
         // noinspection ResourceType
-        fingerprintManager.authenticate(cryptoObject, cancellationSignal, 0 /* flags */, this, null);
+        fingerprintManager.authenticate(cryptoObject, 0 /* flags */, cancellationSignal, this, null);
     }
 
     public void stopListening() {
@@ -59,7 +59,7 @@ public class SurelockFingerprintUiHelper extends FingerprintManager.Authenticati
     }
 
     @Override
-    public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+    public void onAuthenticationSucceeded(FingerprintManagerCompat.AuthenticationResult result) {
         callback.onAuthenticationSucceeded(result);
     }
 }

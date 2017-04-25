@@ -1,9 +1,9 @@
 package com.smashingboxes.surelock;
 
 import android.app.FragmentManager;
-import android.hardware.fingerprint.FingerprintManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
 
 /**
  * Created by Tyler McCraw on 2/17/17.
@@ -26,8 +26,9 @@ public interface SurelockFragment {
      * @param storage instance of SurelockStorage to be used for decrypting the value at the specified key
      * @param valueToEncrypt The value to encrypt in storage
      */
-    void init(FingerprintManager fingerprintManager, FingerprintManager.CryptoObject cryptoObject,
-              @NonNull String key, SurelockStorage storage, @Nullable byte[] valueToEncrypt);
+    void init(FingerprintManagerCompat fingerprintManager, FingerprintManagerCompat.CryptoObject
+            cryptoObject, @NonNull String key, SurelockStorage storage, @Nullable byte[]
+            valueToEncrypt);
 
     /**
      * Display the fragment
@@ -63,7 +64,7 @@ public interface SurelockFragment {
      *
      * @param result An object containing authentication-related data
      */
-    void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result);
+    void onAuthenticationSucceeded(FingerprintManagerCompat.AuthenticationResult result);
 
     /**
      * Called when a fingerprint is valid but not recognized.

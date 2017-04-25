@@ -5,10 +5,11 @@ import android.app.DialogFragment;
 import android.app.FragmentManager;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.hardware.fingerprint.FingerprintManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.StyleRes;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,8 +39,8 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private static final long ERROR_TIMEOUT_MILLIS = 1600;
     private static final long SUCCESS_DELAY_MILLIS = 1300; //TODO make these configurable via attrs
 
-    private FingerprintManager fingerprintManager;
-    private FingerprintManager.CryptoObject cryptoObject;
+    private FingerprintManagerCompat fingerprintManager;
+    private FingerprintManagerCompat.CryptoObject cryptoObject;
     private String keyForDecryption;
     private byte[] valueToEncrypt;
     private SurelockStorage storage;
@@ -66,8 +67,8 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     }
 
     @Override
-    public void init(FingerprintManager fingerprintManager,
-                     FingerprintManager.CryptoObject cryptoObject,
+    public void init(FingerprintManagerCompat fingerprintManager,
+                     FingerprintManagerCompat.CryptoObject cryptoObject,
                      @NonNull String key, SurelockStorage storage, byte[] valueToEncrypt) {
         this.cryptoObject = cryptoObject;
         this.fingerprintManager = fingerprintManager;
@@ -209,7 +210,7 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     }
 
     @Override
-    public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+    public void onAuthenticationSucceeded(FingerprintManagerCompat.AuthenticationResult result) {
         iconView.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -259,7 +260,7 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private void showError(CharSequence error) {
         iconView.setState(SwirlView.State.ERROR);
         statusTextView.setText(error);
-        statusTextView.setTextColor(getResources().getColor(R.color.error_red, null));
+        statusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.error_red));
         statusTextView.removeCallbacks(resetErrorTextRunnable);
         statusTextView.postDelayed(resetErrorTextRunnable, ERROR_TIMEOUT_MILLIS);
     }
@@ -268,7 +269,7 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
         @Override
         public void run() {
             if (isAdded()) {
-                statusTextView.setTextColor(getResources().getColor(R.color.hint_grey, null));
+                statusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.hint_grey));
                 statusTextView.setText(getResources().getString(R.string.fingerprint_hint));
                 iconView.setState(SwirlView.State.ON);
             }

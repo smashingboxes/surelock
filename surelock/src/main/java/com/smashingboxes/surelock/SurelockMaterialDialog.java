@@ -3,10 +3,11 @@ package com.smashingboxes.surelock;
 import android.app.DialogFragment;
 import android.app.FragmentManager;
 import android.content.Context;
-import android.hardware.fingerprint.FingerprintManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,8 +37,8 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
     private SwirlView swirlView;
     private TextView messageView;
 
-    private FingerprintManager fingerprintManager;
-    private FingerprintManager.CryptoObject cryptoObject;
+    private FingerprintManagerCompat fingerprintManager;
+    private FingerprintManagerCompat.CryptoObject cryptoObject;
     private String keyForDecryption;
     private byte[] valueToEncrypt;
     private SurelockStorage storage;
@@ -138,7 +139,7 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
     }
 
     @Override
-    public void init(FingerprintManager fingerprintManager, FingerprintManager.CryptoObject
+    public void init(FingerprintManagerCompat fingerprintManager, FingerprintManagerCompat.CryptoObject
             cryptoObject, @NonNull String key, SurelockStorage storage, byte[] valueToEncrypt) {
         this.fingerprintManager = fingerprintManager;
         this.cryptoObject = cryptoObject;
@@ -161,7 +162,7 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
     }
 
     @Override
-    public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+    public void onAuthenticationSucceeded(FingerprintManagerCompat.AuthenticationResult result) {
         swirlView.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -200,7 +201,7 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
     private void showError(CharSequence error) {
         swirlView.setState(SwirlView.State.ERROR);
         messageView.setText(error);
-        messageView.setTextColor(getResources().getColor(R.color.error_red, null));
+        messageView.setTextColor(ContextCompat.getColor(getActivity(), R.color.error_red));
         messageView.removeCallbacks(resetErrorTextRunnable);
         messageView.postDelayed(resetErrorTextRunnable, ERROR_TIMEOUT_MILLIS);
     }
@@ -209,7 +210,7 @@ public class SurelockMaterialDialog extends DialogFragment implements SurelockFr
         @Override
         public void run() {
             if (isAdded()) {
-                messageView.setTextColor(getResources().getColor(R.color.hint_grey, null));
+                messageView.setTextColor(ContextCompat.getColor(getActivity(), R.color.hint_grey));
                 messageView.setText(getResources().getString(R.string.fingerprint_hint));
                 swirlView.setState(SwirlView.State.ON);
             }
