@@ -419,6 +419,8 @@ public class Surelock {
             generateKeyStoreKey(keyStoreAlias, true);
         } catch (GeneralSecurityException e) {
             throw new SurelockException("Surelock: Failed to prepare KeyStore for encryption", e);
+        } catch (NoClassDefFoundError e) {
+            throw new SurelockException("Surelock: API 23 or higher required.", e);
         }
     }
 

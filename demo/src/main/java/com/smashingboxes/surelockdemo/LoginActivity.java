@@ -26,6 +26,7 @@ import android.widget.Toast;
 
 import com.smashingboxes.surelock.SharedPreferencesStorage;
 import com.smashingboxes.surelock.Surelock;
+import com.smashingboxes.surelock.SurelockException;
 import com.smashingboxes.surelock.SurelockFingerprintListener;
 import com.smashingboxes.surelock.SurelockInvalidKeyException;
 import com.smashingboxes.surelock.SurelockStorage;
@@ -298,6 +299,8 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
                 } catch (UnsupportedEncodingException e) {
                     Toast.makeText(LoginActivity.this, "Failed to encrypt the login", Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Failed to encrypt the login" + e.getMessage());
+                } catch (SurelockException e) {
+                    Toast.makeText(LoginActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             } else {
                 MainActivity.start(LoginActivity.this, params[0], params[1], params[2], params[3], params[4]);
