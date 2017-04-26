@@ -5,7 +5,6 @@ import android.app.FragmentManager;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
@@ -14,6 +13,7 @@ import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.StyleRes;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -81,7 +81,7 @@ public class Surelock {
 
 
     private SurelockFingerprintListener listener;
-    private FingerprintManager fingerprintManager;
+    private FingerprintManagerCompat fingerprintManager;
     private KeyStore keyStore;
     private KeyGenerator keyGenerator;
     private KeyPairGenerator keyPairGenerator;
@@ -98,9 +98,6 @@ public class Surelock {
     private int styleId;
 
     static Surelock initialize(@NonNull Builder builder) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return null;
-        }
         return new Surelock(builder);
     }
 
@@ -126,7 +123,7 @@ public class Surelock {
             Log.e(TAG, "Failed to set up KeyStore", e);
         }
 
-        fingerprintManager = builder.context.getSystemService(FingerprintManager.class);
+        fingerprintManager = FingerprintManagerCompat.from(builder.context);
     }
 
     /**
@@ -136,7 +133,7 @@ public class Surelock {
      */
     @SuppressWarnings({"MissingPermission"})
     public static boolean hasFingerprintHardware(Context context) {
-        return context.getSystemService(FingerprintManager.class).isHardwareDetected();
+        return FingerprintManagerCompat.from(context).isHardwareDetected();
     }
 
     /**
@@ -146,7 +143,7 @@ public class Surelock {
      */
     @SuppressWarnings({"MissingPermission"})
     public static boolean hasUserEnrolledFingerprints(Context context) {
-        return context.getSystemService(FingerprintManager.class).hasEnrolledFingerprints();
+        return FingerprintManagerCompat.from(context).hasEnrolledFingerprints();
     }
 
     /**
@@ -169,9 +166,6 @@ public class Surelock {
      * @return true if user has fingerprint hardware, has enabled secure lock, and has enrolled fingerprints
      */
     public static boolean fingerprintAuthIsSetUp(Context context, boolean showMessaging) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return false;
-        }
         if (!hasFingerprintHardware(context)) {
             return false;
         }
@@ -285,7 +279,7 @@ public class Surelock {
 
     private void showFingerprintDialog(String key, @NonNull Cipher cipher, SurelockFragment
             surelockFragment, @Nullable byte[] valueToEncrypt) {
-        surelockFragment.init(fingerprintManager, new FingerprintManager.CryptoObject(cipher),
+        surelockFragment.init(fingerprintManager, new FingerprintManagerCompat.CryptoObject(cipher),
                 key, storage, valueToEncrypt);
         surelockFragment.show(fragmentManager, surelockFragmentTag);
     }
@@ -425,6 +419,8 @@ public class Surelock {
             generateKeyStoreKey(keyStoreAlias, true);
         } catch (GeneralSecurityException e) {
             throw new SurelockException("Surelock: Failed to prepare KeyStore for encryption", e);
+        } catch (NoClassDefFoundError e) {
+            throw new SurelockException("Surelock: API 23 or higher required.", e);
         }
     }
 
