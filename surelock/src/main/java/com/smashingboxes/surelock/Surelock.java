@@ -5,7 +5,6 @@ import android.app.FragmentManager;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
@@ -13,6 +12,9 @@ import android.security.keystore.KeyProperties;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.StyleRes;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -21,6 +23,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -29,7 +32,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
@@ -37,6 +42,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -71,39 +77,53 @@ public class Surelock {
     public @interface EncryptionType {}
     public static final int SYMMETRIC = 0;
     public static final int ASYMMETRIC = 1;
-    private int encryptionType = ASYMMETRIC; //TODO consider allowing developers to change this if they want
+    private int encryptionType = SYMMETRIC; //TODO consider allowing developers to change this if they want
 
-    private Context context;
+
     private SurelockFingerprintListener listener;
-    private SurelockStorage storage;
-    private FingerprintManager fingerprintManager;
+    private FingerprintManagerCompat fingerprintManager;
     private KeyStore keyStore;
     private KeyGenerator keyGenerator;
     private KeyPairGenerator keyPairGenerator;
     private KeyFactory keyFactory;
-    private final String keyStoreAlias;
 
-    public static Surelock initialize(Context context, SurelockStorage storage, String keystoreAlias) {
-        return new Surelock(context, storage, keystoreAlias);
+    //Set from Builder
+    private SurelockStorage storage;
+    private final String keyStoreAlias;
+    private String surelockFragmentTag;
+    private SurelockFragment surelockFragment;
+    private FragmentManager fragmentManager;
+    private boolean useDefault;
+    @StyleRes
+    private int styleId;
+
+    static Surelock initialize(@NonNull Builder builder) {
+        return new Surelock(builder);
     }
 
-    public Surelock(Context context, SurelockStorage storage, String keystoreAlias) {
-        this.context = context;
-        if (context instanceof SurelockFingerprintListener) {
-            this.listener = (SurelockFingerprintListener) context;
+    Surelock(Builder builder) {
+        if (builder.context instanceof SurelockFingerprintListener) {
+            this.listener = (SurelockFingerprintListener) builder.context;
         } else {
-            throw new RuntimeException(context.toString()
+            throw new RuntimeException(builder.context.toString()
                     + " must implement FingerprintListener");
         }
-        this.storage = storage;
-        this.keyStoreAlias = keystoreAlias;
+
+        this.storage = builder.storage;
+        this.keyStoreAlias = builder.keyStoreAlias;
+        this.surelockFragmentTag = builder.surelockFragmentTag;
+        this.surelockFragment = builder.surelockFragment;
+        this.fragmentManager = builder.fragmentManager;
+        this.useDefault = builder.useDefault;
+        this.styleId = builder.styleId;
+
         try {
-            setUpKeyStoreForSymmetricEncryption();
+            setUpKeyStoreForEncryption();
         } catch (SurelockException e) {
             Log.e(TAG, "Failed to set up KeyStore", e);
         }
 
-        fingerprintManager = context.getSystemService(FingerprintManager.class);
+        fingerprintManager = FingerprintManagerCompat.from(builder.context);
     }
 
     /**
@@ -112,8 +132,8 @@ public class Surelock {
      * @return true if fingerprint hardware is detected
      */
     @SuppressWarnings({"MissingPermission"})
-    public boolean hasFingerprintHardware() {
-        return fingerprintManager.isHardwareDetected();
+    public static boolean hasFingerprintHardware(Context context) {
+        return FingerprintManagerCompat.from(context).isHardwareDetected();
     }
 
     /**
@@ -122,8 +142,8 @@ public class Surelock {
      * @return true if fingerprints have been enrolled. Otherwise, false.
      */
     @SuppressWarnings({"MissingPermission"})
-    public boolean hasUserEnrolledFingerprints() {
-        return fingerprintManager.hasEnrolledFingerprints();
+    public static boolean hasUserEnrolledFingerprints(Context context) {
+        return FingerprintManagerCompat.from(context).hasEnrolledFingerprints();
     }
 
     /**
@@ -132,7 +152,7 @@ public class Surelock {
      *
      * @return true if user has set one of these screen lock methods or if the SIM card is locked.
      */
-    public boolean hasUserEnabledSecureLock() {
+    public static boolean hasUserEnabledSecureLock(Context context) {
         KeyguardManager keyguardManager = context.getSystemService(KeyguardManager.class);
         return keyguardManager.isKeyguardSecure();
     }
@@ -145,18 +165,19 @@ public class Surelock {
      *                      It is recommended to set this to true.
      * @return true if user has fingerprint hardware, has enabled secure lock, and has enrolled fingerprints
      */
-    public boolean fingerprintAuthIsSetUp(boolean showMessaging) {
-        if (!hasFingerprintHardware()) {
+    public static boolean fingerprintAuthIsSetUp(Context context, boolean showMessaging) {
+        if (!hasFingerprintHardware(context)) {
             return false;
         }
-        if (!hasUserEnabledSecureLock()) {
+        if (!hasUserEnabledSecureLock(context)) {
             if (showMessaging) {
                 // Show a message telling the user they haven't set up a fingerprint or lock screen.
                 Toast.makeText(context, context.getString(R.string.error_toast_user_enable_securelock), Toast.LENGTH_LONG).show();
+                context.startActivity(new Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS));
             }
             return false;
         }
-        if (!hasUserEnrolledFingerprints()) {
+        if (!hasUserEnrolledFingerprints(context)) {
             if (showMessaging) {
                 // This happens when no fingerprints are registered.
                 Toast.makeText(context, R.string.error_toast_user_enroll_fingerprints, Toast.LENGTH_LONG).show();
@@ -167,16 +188,20 @@ public class Surelock {
         return true;
     }
 
-
     /**
      * Encrypt a value and store it at the specified key
      *
      * @param key pointer in storage to encrypted value
      * @param value value to be encrypted and stored
      */
-    public void store(String key, byte[] value) {
+    public void store(String key, byte[] value) throws SurelockException {
         initKeyStoreKey();
-        Cipher cipher = initCipher(Cipher.ENCRYPT_MODE);
+        Cipher cipher;
+        try {
+            cipher = initCipher(Cipher.ENCRYPT_MODE);
+        } catch (InvalidKeyException | UnrecoverableKeyException | KeyStoreException e) {
+            throw new SurelockException("Failed to init Cipher for encryption", null);
+        }
         try {
             final byte[] encryptedValue = cipher.doFinal(value);
             storage.createOrUpdate(key, encryptedValue);
@@ -186,67 +211,84 @@ public class Surelock {
     }
 
     /**
-     * Login with the default Surelock dialog fragment
+     * Enroll a fingerprint, encrypt a value, and store the value at the specified key
      *
-     * @param key pointer in storage to encrypted value
-     * @param fragmentManager
-     * @param fingerprintDialogFragmentTag
+     * @param key            he key where encrypted values are stored
+     * @param valueToEncrypt The value to encrypt and store
+     * @throws SurelockException
      */
-    public void loginWithFingerprint(@NonNull String key,
-                                     @NonNull FragmentManager fragmentManager,
-                                     String fingerprintDialogFragmentTag) {
-        SurelockDefaultDialog fragment = (SurelockDefaultDialog) fragmentManager.findFragmentByTag(fingerprintDialogFragmentTag);
-        if (fragment == null) {
-            fragment = (SurelockDefaultDialog) SurelockDefaultDialog.instantiate(context, SurelockDefaultDialog.class.getName());
-        }
-        loginWithFingerprint(key, fragment, fragmentManager, fingerprintDialogFragmentTag);
-    }
-
-    /**
-     * Login with a custom dialog fragment
-     *
-     * @param key pointer in storage to encrypted value
-     * @param surelockFragment
-     * @param fragmentManager
-     * @param fingerprintDialogFragmentTag
-     */
-    public void loginWithFingerprint(@NonNull String key,
-                                     SurelockFragment surelockFragment,
-                                     @NonNull FragmentManager fragmentManager,
-                                     String fingerprintDialogFragmentTag) {
+    public void enrollFingerprintAndStore(@NonNull String key, @NonNull byte[] valueToEncrypt) throws SurelockException {
+        initKeyStoreKey();
         Cipher cipher;
         try {
-            cipher = initCipher(Cipher.DECRYPT_MODE);
+            try {
+                cipher = initCipher(Cipher.ENCRYPT_MODE);
+            } catch (InvalidKeyException | UnrecoverableKeyException | KeyStoreException e) {
+                throw new SurelockException("Failed to init Cipher for encryption", e);
+            }
         } catch (RuntimeException e) {
             listener.onFingerprintError(null); //TODO we need better management of all of these listeners passed everywhere.
             return;
         }
 
         if (cipher != null) {
-            showFingerprintDialog(key, cipher, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
+            showFingerprintDialog(key, cipher, getSurelockFragment(true), valueToEncrypt);
         } else {
-            // TODO
-            // This happens if the lock screen has been disabled or a fingerprint got
-            // enrolled. Thus show the dialog to authenticate with their password first
-            // and ask the user if they want to authenticate with fingerprints in the
-            // future
-//            showFingerprintDialog(cipher, NEW_FINGERPRINT_ENROLLED, surelockFragment, fragmentManager, fingerprintDialogFragmentTag);
+            throw new SurelockException("Failed to init Cipher for encryption", null);
         }
     }
 
-    private void showFingerprintDialog(@NonNull String key,
-                                       @NonNull Cipher cipher,
-                                       SurelockFragment surelockFragment,
-                                       @NonNull FragmentManager fragmentManager, String fingerprintDialogFragmentTag) {
-        surelockFragment.init(fingerprintManager, new FingerprintManager.CryptoObject(cipher), key, storage);
-        surelockFragment.show(fragmentManager, fingerprintDialogFragmentTag);
+    /**
+     * Log in using fingerprint authentication
+     *
+     * @param key The key where encrypted values are stored
+     * @throws SurelockInvalidKeyException If the cipher could not be initialized
+     */
+    public void loginWithFingerprint(@NonNull String key) throws SurelockInvalidKeyException {
+        Cipher cipher;
+        try {
+            cipher = initCipher(Cipher.DECRYPT_MODE);
+        } catch (InvalidKeyException | UnrecoverableKeyException | KeyStoreException e) {
+            // Key may be invalid due to new fingerprint enrollment
+            // Try taking the user back through a new enrollment
+            throw new SurelockInvalidKeyException("Failed to init Cipher. Key may be invalidated. Try re-enrolling.", null);
+        } catch (RuntimeException e) {
+            listener.onFingerprintError(null); //TODO we need better management of all of these listeners passed everywhere.
+            return;
+        }
+
+        if (cipher != null) {
+            showFingerprintDialog(key, cipher, getSurelockFragment(false), null);
+        } else {
+            throw new SurelockInvalidKeyException("Failed to init Cipher. Key may be invalidated. Try re-enrolling.", null);
+        }
+    }
+
+    private SurelockFragment getSurelockFragment(boolean isEnrolling) {
+        if (surelockFragment != null) {
+            return surelockFragment;
+        }
+        if (useDefault) {
+            return SurelockDefaultDialog.newInstance(isEnrolling ? Cipher.ENCRYPT_MODE : Cipher
+                    .DECRYPT_MODE, styleId);
+        } else {
+            return SurelockMaterialDialog.newInstance(isEnrolling ? Cipher.ENCRYPT_MODE : Cipher
+                    .DECRYPT_MODE);
+        }
+    }
+
+    private void showFingerprintDialog(String key, @NonNull Cipher cipher, SurelockFragment
+            surelockFragment, @Nullable byte[] valueToEncrypt) {
+        surelockFragment.init(fingerprintManager, new FingerprintManagerCompat.CryptoObject(cipher),
+                key, storage, valueToEncrypt);
+        surelockFragment.show(fragmentManager, surelockFragmentTag);
     }
 
     /**
-     * Initialize our KeyStore w/ the default security provider "BKS" (BouncyCastle)
-     * Initialize a KeyGenerator using AES as our symmetric provider
+     * Initialize our KeyStore w/ the default security provider
+     * Initialize a KeyGenerator using either RSA for asymmetric or AES for symmetric
      */
-    private void setUpKeyStoreForSymmetricEncryption() throws SurelockException {
+    private void setUpKeyStoreForEncryption() throws SurelockException {
         // NOTE: "AndroidKeyStore" is only supported in APIs 18+,
         // but since the FingerprintManager APIs support 23+, this doesn't matter.
         // https://developer.android.com/reference/java/security/KeyStore.html
@@ -271,7 +313,7 @@ public class Surelock {
         }
     }
 
-    private Cipher getCipherInstance() throws GeneralSecurityException {
+    private Cipher getCipherInstance() throws NoSuchAlgorithmException, NoSuchPaddingException {
         if (encryptionType == ASYMMETRIC) {
             return Cipher.getInstance(
                     KeyProperties.KEY_ALGORITHM_RSA + "/"
@@ -336,13 +378,13 @@ public class Surelock {
         }
     }
 
-    private PublicKey getPublicKey() throws GeneralSecurityException {
+    private PublicKey getPublicKey() throws KeyStoreException, InvalidKeySpecException {
         PublicKey publicKey = keyStore.getCertificate(keyStoreAlias).getPublicKey();
         KeySpec spec = new X509EncodedKeySpec(publicKey.getEncoded());
         return keyFactory.generatePublic(spec);
     }
 
-    private PrivateKey getPrivateKey() throws GeneralSecurityException {
+    private PrivateKey getPrivateKey() throws NoSuchAlgorithmException, UnrecoverableKeyException, KeyStoreException {
         return (PrivateKey) keyStore.getKey(keyStoreAlias, null);
     }
 
@@ -354,14 +396,18 @@ public class Surelock {
         try {
             SecretKey secretKey = (SecretKey) keyStore.getKey(keyStoreAlias, null);
             // Check to see if we need to create a new KeyStore key
-            if (secretKey != null && getEncryptionIv() != null) {
+            if (secretKey != null) {
                 try {
                     if (encryptionType == ASYMMETRIC) {
                         getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey);
+                        return;
                     } else {
-                        getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(getEncryptionIv()));
+                        byte[] encryptionIv = getEncryptionIv();
+                        if (encryptionIv != null) {
+                            getCipherInstance().init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(encryptionIv));
+                            return;
+                        }
                     }
-                    return;
                 } catch (KeyPermanentlyInvalidatedException e) {
                     Log.d(TAG, "Keys were invalidated. Creating new key...");
                 }
@@ -373,6 +419,8 @@ public class Surelock {
             generateKeyStoreKey(keyStoreAlias, true);
         } catch (GeneralSecurityException e) {
             throw new SurelockException("Surelock: Failed to prepare KeyStore for encryption", e);
+        } catch (NoClassDefFoundError e) {
+            throw new SurelockException("Surelock: API 23 or higher required.", e);
         }
     }
 
@@ -384,7 +432,7 @@ public class Surelock {
      * <code>ENCRYPT_MODE</code>, <code>DECRYPT_MODE</code>)
      * @return Cipher object to be used for encryption
      */
-    private Cipher initCipher(int opmode) {
+    private Cipher initCipher(int opmode) throws InvalidKeyException, UnrecoverableKeyException, KeyStoreException {
         Cipher cipher;
         try {
             cipher = getCipherInstance();
@@ -399,7 +447,7 @@ public class Surelock {
                     cipher.init(opmode, secretKey, new IvParameterSpec(getEncryptionIv()));
                 }
             }
-        } catch (GeneralSecurityException e) {
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidAlgorithmParameterException | InvalidKeySpecException e) {
             throw new SurelockException("Surelock: Failed to prepare Cipher for encryption", e);
         }
         return cipher;
@@ -417,6 +465,132 @@ public class Surelock {
     @Nullable
     private byte[] getEncryptionIv() {
         return storage.get(KEY_INIT_IALIZ_ATION_VEC_TOR);
+    }
+
+    public static class Builder {
+
+        private Context context;
+        private FragmentManager fragmentManager;
+        private String surelockFragmentTag;
+        private SurelockFragment surelockFragment;
+        private boolean useDefault;
+        @StyleRes
+        private int styleId;
+        private String keyStoreAlias;
+        private SurelockStorage storage;
+
+        public Builder(@NonNull Context context) {
+            this.context = context;
+        }
+
+        /**
+         * Indicates that fingerprint login should be prompted using the SurelockDefaultDialog
+         * class. This is a fullscreen dialog that can be styled to match an app's theme.
+         *
+         * @param styleId The style resource file to be used for styling the dialog
+         * @return This Builder to allow for method chaining
+         */
+        public Builder withDefaultDialog(@StyleRes int styleId) {
+            useDefault = true;
+            surelockFragment = null;
+            this.styleId = styleId;
+            return this;
+        }
+
+        /**
+         * Indicates that fingerprint login should be prompted using the SurelockMaterialDialog.
+         * This dialog follows Material Design guidelines.
+         *
+         * @return This Builder to allow for method chaining
+         */
+        public Builder withMaterialDialog() {
+            useDefault = false;
+            surelockFragment = null;
+            return this;
+        }
+
+        /**
+         * Indicates that fingerprint login should be prompted using the given dialog.
+         *
+         * @param surelockFragment The custom dialog to use for fingerprint login
+         * @return This Builder to allow for method chaining
+         */
+        public Builder withCustomDialog(@NonNull SurelockFragment surelockFragment) {
+            this.surelockFragment = surelockFragment;
+            return this;
+        }
+
+        /**
+         * Indicates the tag to use for the SurelockFragment. This method MUST be called before
+         * enrolling and logging in.
+         *
+         * @param surelockFragmentTag The tag to use
+         * @return This Builder to allow for method chaining
+         */
+        public Builder withSurelockFragmentTag(@NonNull String surelockFragmentTag) {
+            this.surelockFragmentTag = surelockFragmentTag;
+            return this;
+        }
+
+        /**
+         * Indicates the fragment manager to use to manage the SurelockFragment. This method MUST
+         * be called before enrolling and logging in.
+         *
+         * @param fragmentManager The fragment manager to use
+         * @return This Builder to allow for method chaining
+         */
+        public Builder withFragmentManager(@NonNull FragmentManager fragmentManager) {
+            this.fragmentManager = fragmentManager;
+            return this;
+        }
+
+        /**
+         * Indicates the alias to use for the keystore when using fingerprint login. This method
+         * MUST be called before enrolling and logging in.
+         *
+         * @param keyStoreAlias The keystore alias to use
+         * @return This Builder to allow for method chaining
+         */
+        public Builder withKeystoreAlias(@NonNull String keyStoreAlias) {
+            this.keyStoreAlias = keyStoreAlias;
+            return this;
+        }
+
+        /**
+         * Indicates the SurelockStorage instance to use with fingerprint login. This method MUST
+         * be called before enrolling and logging in.
+         *
+         * @param storage The SurelockStorage instance to use
+         * @return This Builder to allow for method chaining
+         */
+        public Builder withSurelockStorage(@NonNull SurelockStorage storage) {
+            this.storage = storage;
+            return this;
+        }
+
+        /**
+         * Creates the Surelock instance
+         */
+        public Surelock build() {
+            checkFields();
+            return Surelock.initialize(this);
+        }
+
+        private void checkFields() {
+            if (TextUtils.isEmpty(keyStoreAlias)) {
+                throw new IllegalStateException("The keystore alias cannot be empty.");
+            }
+            if (storage == null) {
+                throw new IllegalStateException("SurelockStorage cannot be null.");
+            }
+            if (TextUtils.isEmpty(surelockFragmentTag)) {
+                throw new IllegalStateException("The dialog fragment tag cannot be empty.");
+            }
+            if (fragmentManager == null) {
+                throw new IllegalStateException("The fragment manager cannot be empty.");
+            }
+        }
+
     }
 
 }

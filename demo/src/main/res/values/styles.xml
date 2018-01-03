@@ -8,6 +8,9 @@
         <item name="colorAccent">@color/colorAccent</item>
 
         <item name="android:navigationBarColor" tools:targetApi="21">@color/colorPrimary</item>
+
+        <item name="swirl_ridgeColor">@android:color/black</item>
+        <item name="swirl_errorColor">@color/error_red</item>
     </style>
 
     <style name="AppTheme.NoActionBar">
@@ -18,5 +21,10 @@
     <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar"/>
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light"/>
+
+    <style name="SurelockDemoDialog">
+        <item name="sl_fallback_button_text">@string/password</item>
+        <item name="sl_dialog_theme">@style/AppTheme</item>
+    </style>
 
 </resources>

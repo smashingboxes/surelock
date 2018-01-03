@@ -4,9 +4,12 @@ import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.FragmentManager;
 import android.content.Context;
-import android.hardware.fingerprint.FingerprintManager;
+import android.content.res.TypedArray;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.StyleRes;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +20,7 @@ import android.widget.TextView;
 import com.mattprecious.swirl.SwirlView;
 
 import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
 /**
@@ -29,28 +33,48 @@ import javax.crypto.IllegalBlockSizeException;
 
 public class SurelockDefaultDialog extends DialogFragment implements SurelockFragment {
 
+    private static final String KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock.SurelockDefaultDialog.KEY_CIPHER_OP_MODE";
+    private static final String KEY_STYLE_ID = "com.smashingboxes.surelock.KEY_STYLE_ID";
+
     private static final long ERROR_TIMEOUT_MILLIS = 1600;
     private static final long SUCCESS_DELAY_MILLIS = 1300; //TODO make these configurable via attrs
 
-    private FingerprintManager fingerprintManager;
-    private FingerprintManager.CryptoObject cryptoObject;
+    private FingerprintManagerCompat fingerprintManager;
+    private FingerprintManagerCompat.CryptoObject cryptoObject;
     private String keyForDecryption;
+    private byte[] valueToEncrypt;
     private SurelockStorage storage;
     private SurelockFingerprintListener listener;
     private SurelockFingerprintUiHelper uiHelper;
+    private int cipherOperationMode;
+    @StyleRes
+    private int styleId;
 
     // TODO  clean up and genericize default dialog - add custom attribute set which can be overridden
     private SwirlView iconView;
     private TextView statusTextView;
 
+    static SurelockDefaultDialog newInstance(int cipherOperationMode,
+                                                    @StyleRes int styleId) {
+        Bundle args = new Bundle();
+        args.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
+        args.putInt(KEY_STYLE_ID, styleId);
+
+        SurelockDefaultDialog fragment = new SurelockDefaultDialog();
+        fragment.setArguments(args);
+
+        return fragment;
+    }
+
     @Override
-    public void init(FingerprintManager fingerprintManager,
-                     FingerprintManager.CryptoObject cryptoObject,
-                     @NonNull String key, SurelockStorage storage) {
+    public void init(FingerprintManagerCompat fingerprintManager,
+                     FingerprintManagerCompat.CryptoObject cryptoObject,
+                     @NonNull String key, SurelockStorage storage, byte[] valueToEncrypt) {
         this.cryptoObject = cryptoObject;
         this.fingerprintManager = fingerprintManager;
-        this.keyForDecryption = key;
+        this.keyForDecryption = key; //TODO need to be passing these as newInstance params... or figure a better way to do this
         this.storage = storage;
+        this.valueToEncrypt = valueToEncrypt;
     }
 
     @Override
@@ -61,24 +85,77 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
 
         // Do not create a new Fragment when the Activity is re-created such as orientation changes.
         setRetainInstance(true);
-        setStyle(DialogFragment.STYLE_NO_TITLE, android.R.style.Theme);
+
+        if (savedInstanceState != null) {
+            cipherOperationMode = savedInstanceState.getInt(KEY_CIPHER_OP_MODE);
+            styleId = savedInstanceState.getInt(KEY_STYLE_ID);
+        } else {
+            cipherOperationMode = getArguments().getInt(KEY_CIPHER_OP_MODE);
+            styleId = getArguments().getInt(KEY_STYLE_ID);
+        }
+
+        TypedArray attrs = getActivity().obtainStyledAttributes(styleId, R.styleable
+                .SurelockDefaultDialog);
+        int dialogTheme = attrs.getResourceId(R.styleable.SurelockDefaultDialog_sl_dialog_theme, 0);
+        attrs.recycle();
+
+        setStyle(DialogFragment.STYLE_NO_TITLE, dialogTheme == 0 ? R.style
+                .SurelockTheme_NoActionBar : dialogTheme);
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle
+            savedInstanceState) {
         View view = inflater.inflate(R.layout.fingerprint_dialog_container, container, false);
+        TypedArray attrs = getActivity().obtainStyledAttributes(styleId, R.styleable
+                .SurelockDefaultDialog);
 
-        iconView = (SwirlView) view.findViewById(R.id.fingerprint_icon);
-        statusTextView = (TextView) view.findViewById(R.id.fingerprint_status);
-        Button usePasswordButton = (Button) view.findViewById(R.id.fallback_button);
-        usePasswordButton.setOnClickListener(new View.OnClickListener() {
+        setUpViews(view, attrs);
+
+        attrs.recycle();
+
+        return view;
+    }
+
+    private void setUpViews(View fragmentView, TypedArray attrs) {
+        iconView = (SwirlView) fragmentView.findViewById(R.id.fingerprint_icon);
+        statusTextView = (TextView) fragmentView.findViewById(R.id.fingerprint_status);
+        Button fallbackButton = (Button) fragmentView.findViewById(R.id.fallback_button);
+        fallbackButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dismiss();
             }
         });
 
-        return view;
+        String fallbackButtonText = attrs.getString(R.styleable
+                .SurelockDefaultDialog_sl_fallback_button_text);
+        int fallbackButtonColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_fallback_button_background, 0);
+        int fallbackButtonTextColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_fallback_button_text_color, 0);
+        fallbackButton.setText(fallbackButtonText);
+        if (fallbackButtonColor != 0) {
+            fallbackButton.setBackgroundColor(fallbackButtonColor);
+        }
+        if (fallbackButtonTextColor != 0) {
+            fallbackButton.setTextColor(fallbackButtonTextColor);
+        }
+
+        TextView titleBar = (TextView) fragmentView.findViewById(R.id.sl_title_bar);
+        String titleBarText = attrs.getString(R.styleable.SurelockDefaultDialog_sl_title_bar_text);
+        titleBar.setText(titleBarText);
+        int titleBarColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_title_bar_background, 0);
+        int titleBarTextColor = attrs.getColor(R.styleable
+                .SurelockDefaultDialog_sl_title_bar_text_color, 0);
+        if (titleBarColor != 0) {
+            titleBar.setBackgroundColor(titleBarColor);
+        }
+        if (titleBarTextColor != 0) {
+            titleBar.setTextColor(titleBarTextColor);
+        }
+
     }
 
     @Override
@@ -126,18 +203,35 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     }
 
     @Override
-    public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putInt(KEY_CIPHER_OP_MODE, cipherOperationMode);
+        outState.putInt(KEY_STYLE_ID, styleId);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onAuthenticationSucceeded(FingerprintManagerCompat.AuthenticationResult result) {
         iconView.postDelayed(new Runnable() {
             @Override
             public void run() {
-                //TODO figure out a way to not make user have to run decryption themselves here
-                byte[] encryptedValue = storage.get(keyForDecryption);
-                byte[] decryptedValue;
-                try {
-                    decryptedValue = cryptoObject.getCipher().doFinal(encryptedValue);
-                    listener.onFingerprintAuthenticated(decryptedValue);
-                } catch (BadPaddingException | IllegalBlockSizeException e) {
-                    listener.onFingerprintError(e.getMessage());
+                //TODO figure out a way to not make user have to run encryption/decryption themselves here
+                if (Cipher.ENCRYPT_MODE == cipherOperationMode) {
+                    try {
+                        final byte[] encryptedValue = cryptoObject.getCipher().doFinal(valueToEncrypt);
+                        storage.createOrUpdate(keyForDecryption, encryptedValue);
+                        listener.onFingerprintEnrolled();
+                    } catch (IllegalBlockSizeException | BadPaddingException e) {
+                        listener.onFingerprintError(e.getMessage());
+                    }
+                } else if (Cipher.DECRYPT_MODE == cipherOperationMode) {
+                    byte[] encryptedValue = storage.get(keyForDecryption);
+                    byte[] decryptedValue;
+                    try {
+                        decryptedValue = cryptoObject.getCipher().doFinal(encryptedValue);
+                        listener.onFingerprintAuthenticated(decryptedValue);
+                    } catch (BadPaddingException | IllegalBlockSizeException e) {
+                        listener.onFingerprintError(e.getMessage());
+                    }
                 }
                 dismiss();
             }
@@ -166,7 +260,7 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private void showError(CharSequence error) {
         iconView.setState(SwirlView.State.ERROR);
         statusTextView.setText(error);
-        statusTextView.setTextColor(getResources().getColor(R.color.error_red, null));
+        statusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.error_red));
         statusTextView.removeCallbacks(resetErrorTextRunnable);
         statusTextView.postDelayed(resetErrorTextRunnable, ERROR_TIMEOUT_MILLIS);
     }
@@ -174,9 +268,11 @@ public class SurelockDefaultDialog extends DialogFragment implements SurelockFra
     private Runnable resetErrorTextRunnable = new Runnable() {
         @Override
         public void run() {
-            statusTextView.setTextColor(getResources().getColor(R.color.hint_grey, null));
-            statusTextView.setText(getResources().getString(R.string.fingerprint_hint));
-            iconView.setState(SwirlView.State.ON);
+            if (isAdded()) {
+                statusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.hint_grey));
+                statusTextView.setText(getResources().getString(R.string.fingerprint_hint));
+                iconView.setState(SwirlView.State.ON);
+            }
         }
     };
 }

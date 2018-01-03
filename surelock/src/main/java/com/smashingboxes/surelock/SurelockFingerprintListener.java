@@ -12,6 +12,11 @@ import android.support.annotation.Nullable;
 public interface SurelockFingerprintListener {
 
     /**
+     * Handle successful fingerprint enrollment event
+     */
+    void onFingerprintEnrolled();
+
+    /**
      * Handle successful authentication event
      *
      * @param decryptedValue String which represents the decrypted bytes of the store value
