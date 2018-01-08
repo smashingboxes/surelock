@@ -32,7 +32,7 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
 
     private var authTask: UserLoginTask? = null
     private var surelock: Surelock? = null
-    private var surelockStorage: SurelockStorage? = null
+    private lateinit var surelockStorage: SurelockStorage
     private var preferences: SharedPreferences? = null
 
     private val preferenceHelper: SharedPreferences
@@ -74,13 +74,19 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
                 try {
                     getSurelock().loginWithFingerprint(KEY_CRE_DEN_TIALS)
                 } catch (e: SurelockInvalidKeyException) {
-                    surelockStorage!!.clearAll()
+                    surelockStorage.clearAll()
                     showFingerprintLoginInvalidated()
                 }
 
                 fingerprint_checkbox.visibility = View.GONE
             }
         }
+    }
+
+    override fun onStop() {
+        //Clear storage so users don't have to clear app data to try out new credentials
+        surelockStorage.clearAll()
+        super.onStop()
     }
 
     private fun getSurelock(): Surelock {
@@ -90,7 +96,7 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
                 .withKeystoreAlias(KEYSTORE_KEY_ALIAS)
                 .withFragmentManager(fragmentManager)
                 .withSurelockFragmentTag(FINGERPRINT_DIALOG_FRAGMENT_TAG)
-                .withSurelockStorage(surelockStorage!!)
+                .withSurelockStorage(surelockStorage)
                 .build()
         }
         return surelock!!
@@ -157,7 +163,7 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
             //We're just fetching this to show you on the next screen for demo purposes.
             var storedEncryptedValueString = ""
             try {
-                val storedEncryptedValue = surelockStorage!!.get(KEY_CRE_DEN_TIALS)
+                val storedEncryptedValue = surelockStorage.get(KEY_CRE_DEN_TIALS)
                 if (storedEncryptedValue != null) {
                     storedEncryptedValueString = String(storedEncryptedValue, Charsets.UTF_8)
                 }
@@ -268,7 +274,7 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
         //We're just fetching this to show you on the next screen for demo purposes.
         var storedEncryptedValueString = ""
         try {
-            val storedEncryptedValue = surelockStorage!!.get(KEY_CRE_DEN_TIALS)
+            val storedEncryptedValue = surelockStorage.get(KEY_CRE_DEN_TIALS)
             if (storedEncryptedValue != null) {
                 storedEncryptedValueString = String(storedEncryptedValue, Charsets.UTF_8)
             }
@@ -304,13 +310,15 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
     override fun onFingerprintError(errorMessage: CharSequence?) {
         //TODO pass in the TYPE of error here. Allow user to customize message they want to display based on type of error
         //TODO reload view without surelock dialog - fall back on password login
-        Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+        errorMessage?.let {
+            Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+        }
     }
 
     @Throws(UnsupportedEncodingException::class)
     private fun getFormattedCredentialsForEncryption(username: String,
                                                      password: String): ByteArray {
-        val creds = String.format("%s]%s", username, password) //TODO move delimiter to constant
+        val creds = String.format(DELIMITER, username, password)
         return creds.toByteArray(Charsets.UTF_8)
     }
 
@@ -333,5 +341,6 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
         private val KEYSTORE_KEY_ALIAS = "com.smashingboxes.surelockdemo.KEYSTORE_KEY_ALIAS"
         private val KEY_CRE_DEN_TIALS = "com.smashingboxes.surelockdemo.KEY_CRE_DEN_TIALS"
         private val SHARED_PREFS_FILE_NAME = "surelock_demo_prefs"
+        private val DELIMITER = "%s]%s"
     }
 }
