@@ -8,4 +8,4 @@ package com.smashingboxes.surelock
  * dependencies for encryption/decryption using FingerprintManager
  *
  */
-open class SurelockException(message: String, cause: Throwable) : RuntimeException(message, cause)
+open class SurelockException(message: String, cause: Throwable?) : RuntimeException(message, cause)

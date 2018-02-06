@@ -1,20 +1,19 @@
-package com.smashingboxes.surelock;
+package com.smashingboxes.surelock
 
-import android.app.FragmentManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
+import android.app.FragmentManager
+import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
 
 /**
  * Created by Tyler McCraw on 2/17/17.
- * <p>
- *     Implement this interface in your custom Fragment or DialogFragment
- *     to customize your own lock screen and then pass your
- *     implemented Surelock dialog to {@link Surelock} loginWithFingerprint()
- * </p>
+ *
+ *
+ * Implement this interface in your custom Fragment or DialogFragment
+ * to customize your own lock screen and then pass your
+ * implemented Surelock dialog to [Surelock] loginWithFingerprint()
+ *
  */
 
-public interface SurelockFragment {
+interface SurelockFragment {
 
     /**
      * Set up the fragment
@@ -26,9 +25,9 @@ public interface SurelockFragment {
      * @param storage instance of SurelockStorage to be used for decrypting the value at the specified key
      * @param valueToEncrypt The value to encrypt in storage
      */
-    void init(FingerprintManagerCompat fingerprintManager, FingerprintManagerCompat.CryptoObject
-            cryptoObject, @NonNull String key, SurelockStorage storage, @Nullable byte[]
-            valueToEncrypt);
+    fun init(fingerprintManager: FingerprintManagerCompat,
+             cryptoObject: FingerprintManagerCompat.CryptoObject, key: String,
+             storage: SurelockStorage, valueToEncrypt: ByteArray?)
 
     /**
      * Display the fragment
@@ -38,7 +37,7 @@ public interface SurelockFragment {
      * @param fragmentManager an instance of FragmentManager
      * @param fingerprintDialogFragmentTag a tag used for keeping track of the fragment's display state
      */
-    void show(FragmentManager fragmentManager, String fingerprintDialogFragmentTag);
+    fun show(fragmentManager: FragmentManager, fingerprintDialogFragmentTag: String)
 
     /**
      * Called when an unrecoverable error has been encountered and the operation is complete.
@@ -47,7 +46,7 @@ public interface SurelockFragment {
      * @param errorCode An integer identifying the error message
      * @param errString A human-readable error string that can be shown in UI
      */
-    void onAuthenticationError(int errorCode, CharSequence errString);
+    fun onAuthenticationError(errorCode: Int, errString: CharSequence?)
 
     /**
      * Called when a recoverable error has been encountered during authentication. The help
@@ -57,17 +56,17 @@ public interface SurelockFragment {
      * @param helpCode An integer identifying the error message
      * @param helpString A human-readable string that can be shown in UI
      */
-    void onAuthenticationHelp(int helpCode, CharSequence helpString);
+    fun onAuthenticationHelp(helpCode: Int, helpString: CharSequence?)
 
     /**
      * Called when a fingerprint is recognized.
      *
      * @param result An object containing authentication-related data
      */
-    void onAuthenticationSucceeded(FingerprintManagerCompat.AuthenticationResult result);
+    fun onAuthenticationSucceeded(result: FingerprintManagerCompat.AuthenticationResult?)
 
     /**
      * Called when a fingerprint is valid but not recognized.
      */
-    void onAuthenticationFailed();
+    fun onAuthenticationFailed()
 }

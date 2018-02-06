@@ -10,5 +10,5 @@ package com.smashingboxes.surelock
  *
  */
 
-class SurelockInvalidKeyException(message: String, cause: Throwable) :
+class SurelockInvalidKeyException(message: String, cause: Throwable?) :
     SurelockException(message, cause)

@@ -56,6 +56,6 @@ class SharedPreferencesStorage
         prefs.edit().clear().apply()
     }
 
-    override fun getKeys(): Set<String>? = Collections.unmodifiableSet(
-        LinkedHashSet(prefs.all.keys))
+    override val keys: Set<String>?
+        get() = Collections.unmodifiableSet(LinkedHashSet(prefs.all.keys))
 }
