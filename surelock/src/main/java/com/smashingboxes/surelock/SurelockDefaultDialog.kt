@@ -171,7 +171,7 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
 
     override fun onPause() {
         super.onPause()
-        uiHelper!!.stopListening()
+        uiHelper?.stopListening()
     }
 
     override fun onDetach() {
