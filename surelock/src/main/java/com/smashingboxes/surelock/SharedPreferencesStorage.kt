@@ -2,7 +2,6 @@ package com.smashingboxes.surelock
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.text.TextUtils
 import android.util.Base64
 import java.util.*
 
@@ -42,7 +41,7 @@ class SharedPreferencesStorage
     override fun get(key: String): ByteArray? {
         val byteString = prefs.getString(key, null)
         var decodedBytes: ByteArray? = null
-        if (!TextUtils.isEmpty(byteString)) {
+        if (!byteString.isNullOrEmpty()) {
             decodedBytes = Base64.decode(byteString, Base64.DEFAULT)
         }
         return decodedBytes

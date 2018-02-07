@@ -12,7 +12,6 @@ import android.security.keystore.KeyProperties
 import android.support.annotation.IntDef
 import android.support.annotation.StyleRes
 import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
-import android.text.TextUtils
 import android.util.Log
 import android.widget.Toast
 
@@ -557,7 +556,7 @@ class Surelock internal constructor(builder: Builder) {
             if (storage == null) {
                 throw IllegalStateException("SurelockStorage cannot be null.")
             }
-            if (TextUtils.isEmpty(surelockFragmentTag)) {
+            if (surelockFragmentTag.isNullOrEmpty()) {
                 throw IllegalStateException("The dialog fragment tag cannot be empty.")
             }
             if (fragmentManager == null) {
