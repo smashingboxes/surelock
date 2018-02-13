@@ -1,7 +1,6 @@
 package com.smashingboxes.surelock
 
 import android.annotation.TargetApi
-import android.app.FragmentManager
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
@@ -11,6 +10,7 @@ import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.support.annotation.IntDef
 import android.support.annotation.StyleRes
+import android.support.v4.app.FragmentManager
 import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
 import android.util.Log
 import android.widget.Toast
