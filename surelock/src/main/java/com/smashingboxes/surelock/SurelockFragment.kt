@@ -1,6 +1,6 @@
 package com.smashingboxes.surelock
 
-import android.app.FragmentManager
+import android.support.v4.app.FragmentManager
 import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
 
 /**
