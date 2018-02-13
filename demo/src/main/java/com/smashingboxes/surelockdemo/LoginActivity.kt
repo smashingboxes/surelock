@@ -36,7 +36,7 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
         Surelock.Builder(this)
             .withDefaultDialog(R.style.SurelockDemoDialog)
             .withKeystoreAlias(KEYSTORE_KEY_ALIAS)
-            .withFragmentManager(fragmentManager)
+            .withFragmentManager(supportFragmentManager)
             .withSurelockFragmentTag(FINGERPRINT_DIALOG_FRAGMENT_TAG)
             .withSurelockStorage(surelockStorage)
             .build()
@@ -288,10 +288,10 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
     companion object {
 
         private val TAG = LoginActivity::class.java.simpleName
-        private val FINGERPRINT_DIALOG_FRAGMENT_TAG = "com.smashingboxes.surelockdemo.FINGERPRINT_DIALOG_FRAGMENT_TAG"
-        private val KEYSTORE_KEY_ALIAS = "com.smashingboxes.surelockdemo.KEYSTORE_KEY_ALIAS"
-        private val KEY_CRE_DEN_TIALS = "com.smashingboxes.surelockdemo.KEY_CRE_DEN_TIALS"
-        private val SHARED_PREFS_FILE_NAME = "surelock_demo_prefs"
-        private val DELIMITER = "%s]%s"
+        private const val FINGERPRINT_DIALOG_FRAGMENT_TAG = "com.smashingboxes.surelockdemo.FINGERPRINT_DIALOG_FRAGMENT_TAG"
+        private const val KEYSTORE_KEY_ALIAS = "com.smashingboxes.surelockdemo.KEYSTORE_KEY_ALIAS"
+        private const val KEY_CRE_DEN_TIALS = "com.smashingboxes.surelockdemo.KEY_CRE_DEN_TIALS"
+        private const val SHARED_PREFS_FILE_NAME = "surelock_demo_prefs"
+        private const val DELIMITER = "%s]%s"
     }
 }
