@@ -120,7 +120,7 @@ class Surelock internal constructor(builder: Builder) {
         set(encryptionIv) = storage!!.createOrUpdate(KEY_INIT_IALIZ_ATION_VEC_TOR, encryptionIv ?: ByteArray(0))
 
     @Retention(AnnotationRetention.SOURCE)
-    @IntDef(SYMMETRIC.toLong(), ASYMMETRIC.toLong())
+    @IntDef(SYMMETRIC, ASYMMETRIC)
     annotation class EncryptionType
 
     init {
