@@ -4,11 +4,11 @@ import android.app.Dialog
 import android.content.Context
 import android.content.res.TypedArray
 import android.os.Bundle
-import android.support.annotation.StyleRes
-import android.support.v4.app.DialogFragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.content.ContextCompat
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
+import androidx.annotation.StyleRes
+import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentManager
+import androidx.core.content.ContextCompat
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -161,12 +161,6 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
         super.onResume()
         uiHelper?.startListening(cryptoObject!!)
         iconView.setState(SwirlView.State.ON)
-    }
-
-    override fun show(fragmentManager: FragmentManager, fingerprintDialogFragmentTag: String) {
-        if (dialog == null || !dialog.isShowing) {
-            super.show(fragmentManager, fingerprintDialogFragmentTag)
-        }
     }
 
     override fun onPause() {

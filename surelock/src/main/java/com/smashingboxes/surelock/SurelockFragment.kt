@@ -1,7 +1,7 @@
 package com.smashingboxes.surelock
 
-import android.support.v4.app.FragmentManager
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
+import androidx.fragment.app.FragmentManager
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 
 /**
  * Created by Tyler McCraw on 2/17/17.
@@ -28,16 +28,6 @@ interface SurelockFragment {
     fun init(fingerprintManager: FingerprintManagerCompat,
              cryptoObject: FingerprintManagerCompat.CryptoObject, key: String,
              storage: SurelockStorage, valueToEncrypt: ByteArray?)
-
-    /**
-     * Display the fragment
-     * You may want to check if it's already displayed here
-     * TODO check if this works for plain Fragments as well and not just DialogFragments
-     *
-     * @param fragmentManager an instance of FragmentManager
-     * @param fingerprintDialogFragmentTag a tag used for keeping track of the fragment's display state
-     */
-    fun show(fragmentManager: FragmentManager, fingerprintDialogFragmentTag: String)
 
     /**
      * Called when an unrecoverable error has been encountered and the operation is complete.

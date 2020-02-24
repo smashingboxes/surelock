@@ -2,10 +2,10 @@ package com.smashingboxes.surelock
 
 import android.content.Context
 import android.os.Bundle
-import android.support.v4.app.DialogFragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.content.ContextCompat
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
+import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentManager
+import androidx.core.content.ContextCompat
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -80,7 +80,7 @@ class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
-        dialog.setTitle(R.string.sl_sign_in)
+        dialog?.setTitle(R.string.sl_sign_in)
         val view = inflater.inflate(R.layout.material_fingerprint_dialog, container, false)
         val cancelButton = view.findViewById<View>(R.id.cancel_button) as Button
         cancelButton.setOnClickListener { dismiss() }
@@ -95,12 +95,6 @@ class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
             uiHelper?.startListening(it)
         }
         swirlView.setState(SwirlView.State.ON)
-    }
-
-    override fun show(fragmentManager: FragmentManager, fingerprintDialogFragmentTag: String) {
-        if (dialog == null || !dialog.isShowing) {
-            super.show(fragmentManager, fingerprintDialogFragmentTag)
-        }
     }
 
     override fun onPause() {

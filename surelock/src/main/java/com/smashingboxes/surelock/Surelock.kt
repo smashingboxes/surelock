@@ -8,10 +8,10 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
-import android.support.annotation.IntDef
-import android.support.annotation.StyleRes
-import android.support.v4.app.FragmentManager
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
+import androidx.annotation.IntDef
+import androidx.annotation.StyleRes
+import androidx.fragment.app.FragmentManager
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import android.util.Log
 import android.widget.Toast
 

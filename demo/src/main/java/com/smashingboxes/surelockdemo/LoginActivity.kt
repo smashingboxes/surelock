@@ -5,8 +5,8 @@ import android.animation.AnimatorListenerAdapter
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -14,10 +14,6 @@ import android.widget.TextView
 import android.widget.Toast
 import com.smashingboxes.surelock.*
 import kotlinx.android.synthetic.main.activity_login.*
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
 import java.io.UnsupportedEncodingException
 
 /**
