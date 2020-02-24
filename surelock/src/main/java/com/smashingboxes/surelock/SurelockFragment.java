@@ -1,9 +1,9 @@
 package com.smashingboxes.surelock;
 
 import android.app.FragmentManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat;
 
 /**
  * Created by Tyler McCraw on 2/17/17.
