@@ -5,8 +5,8 @@ import android.animation.AnimatorListenerAdapter
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -14,10 +14,6 @@ import android.widget.TextView
 import android.widget.Toast
 import com.smashingboxes.surelock.*
 import kotlinx.android.synthetic.main.activity_login.*
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
 import java.io.UnsupportedEncodingException
 
 /**
@@ -36,7 +32,7 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
         Surelock.Builder(this)
             .withDefaultDialog(R.style.SurelockDemoDialog)
             .withKeystoreAlias(KEYSTORE_KEY_ALIAS)
-            .withFragmentManager(fragmentManager)
+            .withFragmentManager(supportFragmentManager)
             .withSurelockFragmentTag(FINGERPRINT_DIALOG_FRAGMENT_TAG)
             .withSurelockStorage(surelockStorage)
             .build()
@@ -288,10 +284,10 @@ class LoginActivity : AppCompatActivity(), SurelockFingerprintListener {
     companion object {
 
         private val TAG = LoginActivity::class.java.simpleName
-        private val FINGERPRINT_DIALOG_FRAGMENT_TAG = "com.smashingboxes.surelockdemo.FINGERPRINT_DIALOG_FRAGMENT_TAG"
-        private val KEYSTORE_KEY_ALIAS = "com.smashingboxes.surelockdemo.KEYSTORE_KEY_ALIAS"
-        private val KEY_CRE_DEN_TIALS = "com.smashingboxes.surelockdemo.KEY_CRE_DEN_TIALS"
-        private val SHARED_PREFS_FILE_NAME = "surelock_demo_prefs"
-        private val DELIMITER = "%s]%s"
+        private const val FINGERPRINT_DIALOG_FRAGMENT_TAG = "com.smashingboxes.surelockdemo.FINGERPRINT_DIALOG_FRAGMENT_TAG"
+        private const val KEYSTORE_KEY_ALIAS = "com.smashingboxes.surelockdemo.KEYSTORE_KEY_ALIAS"
+        private const val KEY_CRE_DEN_TIALS = "com.smashingboxes.surelockdemo.KEY_CRE_DEN_TIALS"
+        private const val SHARED_PREFS_FILE_NAME = "surelock_demo_prefs"
+        private const val DELIMITER = "%s]%s"
     }
 }

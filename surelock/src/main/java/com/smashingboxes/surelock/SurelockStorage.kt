@@ -1,6 +1,6 @@
 package com.smashingboxes.surelock
 
-import android.support.annotation.CheckResult
+import androidx.annotation.CheckResult
 
 /**
  * Created by Tyler McCraw on 3/5/17.

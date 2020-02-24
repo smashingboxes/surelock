@@ -2,7 +2,7 @@ package com.smashingboxes.surelockdemo
 
 import android.content.Intent
 import android.os.Bundle
-import android.support.v7.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatActivity
 
 /**
  * Created by Nicholas Cook on 1/8/18.

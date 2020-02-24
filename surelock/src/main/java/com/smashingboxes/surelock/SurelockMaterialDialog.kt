@@ -1,11 +1,11 @@
 package com.smashingboxes.surelock
 
-import android.app.DialogFragment
-import android.app.FragmentManager
 import android.content.Context
 import android.os.Bundle
-import android.support.v4.content.ContextCompat
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
+import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentManager
+import androidx.core.content.ContextCompat
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,8 +30,8 @@ import javax.crypto.IllegalBlockSizeException
 
 class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
 
-    private var swirlView: SwirlView? = null
-    private var messageView: TextView? = null
+    private lateinit var swirlView: SwirlView
+    private lateinit var messageView: TextView
 
     private var fingerprintManager: FingerprintManagerCompat? = null
     private var cryptoObject: FingerprintManagerCompat.CryptoObject? = null
@@ -44,11 +44,11 @@ class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
 
     private val resetErrorTextRunnable = Runnable {
         if (isAdded) {
-            messageView?.apply {
-                setTextColor(ContextCompat.getColor(activity, R.color.hint_grey))
+            messageView.apply {
+                setTextColor(ContextCompat.getColor(context, R.color.hint_grey))
                 text = resources.getString(R.string.fingerprint_hint)
             }
-            swirlView?.apply {
+            swirlView.apply {
                 setState(SwirlView.State.ON)
             }
         }
@@ -72,15 +72,15 @@ class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
         // Do not create a new Fragment when the Activity is re-created such as orientation changes.
         retainInstance = true
 
-        cipherOperationMode = savedInstanceState?.getInt(KEY_CIPHER_OP_MODE) ?: arguments.getInt(
-            KEY_CIPHER_OP_MODE)
+        cipherOperationMode = savedInstanceState?.getInt(KEY_CIPHER_OP_MODE) ?: arguments?.getInt(
+            KEY_CIPHER_OP_MODE) ?: 0
 
         setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Light_Dialog)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
-        dialog.setTitle(R.string.sl_sign_in)
+        dialog?.setTitle(R.string.sl_sign_in)
         val view = inflater.inflate(R.layout.material_fingerprint_dialog, container, false)
         val cancelButton = view.findViewById<View>(R.id.cancel_button) as Button
         cancelButton.setOnClickListener { dismiss() }
@@ -94,13 +94,7 @@ class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
         cryptoObject?.let {
             uiHelper?.startListening(it)
         }
-        swirlView?.setState(SwirlView.State.ON)
-    }
-
-    override fun show(fragmentManager: FragmentManager, fingerprintDialogFragmentTag: String) {
-        if (dialog == null || !dialog.isShowing) {
-            super.show(fragmentManager, fingerprintDialogFragmentTag)
-        }
+        swirlView.setState(SwirlView.State.ON)
     }
 
     override fun onPause() {
@@ -140,51 +134,51 @@ class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
     }
 
     override fun onAuthenticationSucceeded(result: FingerprintManagerCompat.AuthenticationResult?) {
-        swirlView?.postDelayed({
+        swirlView.postDelayed({
             //TODO figure out a way to not make user have to run encryption/decryption
             // themselves here
             if (Cipher.ENCRYPT_MODE == cipherOperationMode) {
                 try {
                     val encryptedValue = cryptoObject?.cipher?.doFinal(valueToEncrypt)
                     keyForDecryption?.let {
-                        if (encryptedValue != null) {
-                            storage?.createOrUpdate(it, encryptedValue)
-                            listener?.onFingerprintEnrolled()
-                        }
+                        storage?.createOrUpdate(it, encryptedValue!!)
+                        listener?.onFingerprintEnrolled()
                     }
                 } catch (e: IllegalBlockSizeException) {
                     listener?.onFingerprintError(e.message)
                 } catch (e: BadPaddingException) {
                     listener?.onFingerprintError(e.message)
+                } catch (e: NullPointerException) {
+                    listener?.onFingerprintError(e.message)
                 }
-
             } else if (Cipher.DECRYPT_MODE == cipherOperationMode) {
                 val encryptedValue = storage?.get(keyForDecryption!!)
-                val decryptedValue: ByteArray
+                val decryptedValue: ByteArray?
                 try {
-                    decryptedValue = cryptoObject?.cipher?.doFinal(encryptedValue) ?: ByteArray(0)
-                    listener?.onFingerprintAuthenticated(decryptedValue)
+                    decryptedValue = cryptoObject?.cipher?.doFinal(encryptedValue)
+                    listener?.onFingerprintAuthenticated(decryptedValue!!)
                 } catch (e: BadPaddingException) {
                     listener?.onFingerprintError(e.message)
                 } catch (e: IllegalBlockSizeException) {
                     listener?.onFingerprintError(e.message)
+                } catch (e: NullPointerException) {
+                    listener?.onFingerprintError(e.message)
                 }
-
             }
             dismiss()
         }, SUCCESS_DELAY_MILLIS)
     }
 
     override fun onAuthenticationFailed() {
-        showError(messageView?.resources?.getString(R.string.fingerprint_not_recognized) ?: "")
+        showError(messageView.resources.getString(R.string.fingerprint_not_recognized))
         listener?.onFingerprintError(null)
     }
 
     private fun showError(error: CharSequence?) {
-        swirlView?.setState(SwirlView.State.ERROR)
-        messageView?.apply {
+        swirlView.setState(SwirlView.State.ERROR)
+        messageView.apply {
             text = error
-            setTextColor(ContextCompat.getColor(activity, R.color.error_red))
+            setTextColor(ContextCompat.getColor(context, R.color.error_red))
             removeCallbacks(resetErrorTextRunnable)
             postDelayed(resetErrorTextRunnable, ERROR_TIMEOUT_MILLIS)
         }
@@ -192,10 +186,10 @@ class SurelockMaterialDialog : DialogFragment(), SurelockFragment {
 
     companion object {
 
-        private val KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock" + ".SurelockMaterialDialog.KEY_CIPHER_OP_MODE"
+        private const val KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock" + ".SurelockMaterialDialog.KEY_CIPHER_OP_MODE"
 
-        private val ERROR_TIMEOUT_MILLIS: Long = 1600
-        private val SUCCESS_DELAY_MILLIS: Long = 1300
+        private const val ERROR_TIMEOUT_MILLIS: Long = 1600
+        private const val SUCCESS_DELAY_MILLIS: Long = 1300
 
         internal fun newInstance(cipherOperationMode: Int): SurelockMaterialDialog {
 

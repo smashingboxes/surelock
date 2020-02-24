@@ -1,14 +1,14 @@
 package com.smashingboxes.surelock
 
 import android.app.Dialog
-import android.app.DialogFragment
-import android.app.FragmentManager
 import android.content.Context
 import android.content.res.TypedArray
 import android.os.Bundle
-import android.support.annotation.StyleRes
-import android.support.v4.content.ContextCompat
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
+import androidx.annotation.StyleRes
+import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentManager
+import androidx.core.content.ContextCompat
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -45,16 +45,16 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
     private var styleId: Int = 0
 
     // TODO  clean up and genericize default dialog - add custom attribute set which can be overridden
-    private var iconView: SwirlView? = null
-    private var statusTextView: TextView? = null
+    private lateinit var iconView: SwirlView
+    private lateinit var statusTextView: TextView
 
     private val resetErrorTextRunnable = Runnable {
         if (isAdded) {
-            statusTextView?.apply {
-                setTextColor(ContextCompat.getColor(activity, R.color.hint_grey))
-                text = resources.getString(R.string.fingerprint_hint)
+            statusTextView.apply {
+                setTextColor(ContextCompat.getColor(context, R.color.hint_grey))
+                text = getString(R.string.fingerprint_hint)
             }
-            iconView?.setState(SwirlView.State.ON)
+            iconView.setState(SwirlView.State.ON)
         }
     }
 
@@ -80,11 +80,11 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
             cipherOperationMode = savedInstanceState.getInt(KEY_CIPHER_OP_MODE)
             styleId = savedInstanceState.getInt(KEY_STYLE_ID)
         } else {
-            cipherOperationMode = arguments.getInt(KEY_CIPHER_OP_MODE)
-            styleId = arguments.getInt(KEY_STYLE_ID)
+            cipherOperationMode = arguments!!.getInt(KEY_CIPHER_OP_MODE)
+            styleId = arguments!!.getInt(KEY_STYLE_ID)
         }
 
-        val attrs = activity.obtainStyledAttributes(styleId, R.styleable
+        val attrs = context!!.obtainStyledAttributes(styleId, R.styleable
             .SurelockDefaultDialog)
         val dialogTheme = attrs.getResourceId(R.styleable.SurelockDefaultDialog_sl_dialog_theme, 0)
         attrs.recycle()
@@ -96,7 +96,7 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fingerprint_dialog_container, container, false)
-        val attrs = activity.obtainStyledAttributes(styleId, R.styleable.SurelockDefaultDialog)
+        val attrs = activity!!.obtainStyledAttributes(styleId, R.styleable.SurelockDefaultDialog)
 
         setUpViews(view, attrs)
 
@@ -160,13 +160,7 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
     override fun onResume() {
         super.onResume()
         uiHelper?.startListening(cryptoObject!!)
-        iconView?.setState(SwirlView.State.ON)
-    }
-
-    override fun show(fragmentManager: FragmentManager, fingerprintDialogFragmentTag: String) {
-        if (dialog == null || !dialog.isShowing) {
-            super.show(fragmentManager, fingerprintDialogFragmentTag)
-        }
+        iconView.setState(SwirlView.State.ON)
     }
 
     override fun onPause() {
@@ -186,35 +180,35 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
     }
 
     override fun onAuthenticationSucceeded(result: FingerprintManagerCompat.AuthenticationResult?) {
-        iconView?.postDelayed({
+        iconView.postDelayed({
             //TODO figure out a way to not make user have to run encryption/decryption themselves here
             if (Cipher.ENCRYPT_MODE == cipherOperationMode) {
                 try {
                     val encryptedValue = cryptoObject?.cipher?.doFinal(valueToEncrypt)
                     keyForDecryption?.let {
-                        if (encryptedValue != null) {
-                            storage?.createOrUpdate(it, encryptedValue)
-                            listener?.onFingerprintEnrolled()
-                        }
+                        storage?.createOrUpdate(it, encryptedValue!!)
+                        listener?.onFingerprintEnrolled()
                     }
                 } catch (e: IllegalBlockSizeException) {
                     listener?.onFingerprintError(e.message)
                 } catch (e: BadPaddingException) {
                     listener?.onFingerprintError(e.message)
+                } catch (e: NullPointerException) {
+                    listener?.onFingerprintError(e.message)
                 }
-
             } else if (Cipher.DECRYPT_MODE == cipherOperationMode) {
                 val encryptedValue = storage?.get(keyForDecryption!!)
-                val decryptedValue: ByteArray
+                val decryptedValue: ByteArray?
                 try {
-                    decryptedValue = cryptoObject?.cipher?.doFinal(encryptedValue) ?: ByteArray(0)
-                    listener?.onFingerprintAuthenticated(decryptedValue)
+                    decryptedValue = cryptoObject?.cipher?.doFinal(encryptedValue)
+                    listener?.onFingerprintAuthenticated(decryptedValue!!)
                 } catch (e: BadPaddingException) {
                     listener?.onFingerprintError(e.message)
                 } catch (e: IllegalBlockSizeException) {
                     listener?.onFingerprintError(e.message)
+                } catch (e: NullPointerException) {
+                    listener?.onFingerprintError(e.message)
                 }
-
             }
             dismiss()
         }, SUCCESS_DELAY_MILLIS)
@@ -232,15 +226,15 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
     }
 
     override fun onAuthenticationFailed() {
-        showError(statusTextView!!.resources.getString(R.string.fingerprint_not_recognized))
+        showError(getString(R.string.fingerprint_not_recognized))
         listener?.onFingerprintError(null)
     }
 
     private fun showError(error: CharSequence?) {
-        iconView?.setState(SwirlView.State.ERROR)
-        statusTextView?.apply {
+        iconView.setState(SwirlView.State.ERROR)
+        statusTextView.apply {
             text = error
-            setTextColor(ContextCompat.getColor(activity, R.color.error_red))
+            setTextColor(ContextCompat.getColor(context, R.color.error_red))
             removeCallbacks(resetErrorTextRunnable)
             postDelayed(resetErrorTextRunnable, ERROR_TIMEOUT_MILLIS)
         }
@@ -248,11 +242,11 @@ class SurelockDefaultDialog : DialogFragment(), SurelockFragment {
 
     companion object {
 
-        private val KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock.SurelockDefaultDialog.KEY_CIPHER_OP_MODE"
-        private val KEY_STYLE_ID = "com.smashingboxes.surelock.KEY_STYLE_ID"
+        private const val KEY_CIPHER_OP_MODE = "com.smashingboxes.surelock.SurelockDefaultDialog.KEY_CIPHER_OP_MODE"
+        private const val KEY_STYLE_ID = "com.smashingboxes.surelock.KEY_STYLE_ID"
 
-        private val ERROR_TIMEOUT_MILLIS: Long = 1600
-        private val SUCCESS_DELAY_MILLIS: Long = 1300 //TODO make these configurable via attrs
+        private const val ERROR_TIMEOUT_MILLIS: Long = 1600
+        private const val SUCCESS_DELAY_MILLIS: Long = 1300 //TODO make these configurable via attrs
 
         internal fun newInstance(cipherOperationMode: Int,
                                  @StyleRes styleId: Int): SurelockDefaultDialog {

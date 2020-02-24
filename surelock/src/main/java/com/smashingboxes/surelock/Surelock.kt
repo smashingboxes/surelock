@@ -1,7 +1,6 @@
 package com.smashingboxes.surelock
 
 import android.annotation.TargetApi
-import android.app.FragmentManager
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
@@ -9,9 +8,10 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
-import android.support.annotation.IntDef
-import android.support.annotation.StyleRes
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat
+import androidx.annotation.IntDef
+import androidx.annotation.StyleRes
+import androidx.fragment.app.FragmentManager
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import android.util.Log
 import android.widget.Toast
 
@@ -120,7 +120,7 @@ class Surelock internal constructor(builder: Builder) {
         set(encryptionIv) = storage!!.createOrUpdate(KEY_INIT_IALIZ_ATION_VEC_TOR, encryptionIv ?: ByteArray(0))
 
     @Retention(AnnotationRetention.SOURCE)
-    @IntDef(SYMMETRIC.toLong(), ASYMMETRIC.toLong())
+    @IntDef(SYMMETRIC, ASYMMETRIC)
     annotation class EncryptionType
 
     init {
