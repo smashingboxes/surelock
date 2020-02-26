@@ -1,6 +1,7 @@
 <resources>
     <string name="fingerprint_not_recognized">Fingerprint not recognized. Try again.</string>
     <string name="fingerprint_success">Fingerprint recognized</string>
+    <string name="fingerprint_title">Authenticate</string>
     <string name="fingerprint_description">Confirm fingerprint to continue</string>
     <string name="fingerprint_hint">Touch sensor</string>
     <string name="cancel">Cancel</string>

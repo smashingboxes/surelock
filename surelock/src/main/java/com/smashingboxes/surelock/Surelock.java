@@ -1,19 +1,23 @@
 package com.smashingboxes.surelock;
 
 import android.annotation.TargetApi;
-import android.app.FragmentManager;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.TypedArray;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyProperties;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.StyleRes;
-import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StyleRes;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
+
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -37,6 +41,7 @@ import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.concurrent.Executor;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -81,7 +86,11 @@ public class Surelock {
 
 
     private SurelockFingerprintListener listener;
-    private FingerprintManagerCompat fingerprintManager;
+    private BiometricPrompt biometricPrompt;
+    private BiometricPrompt.PromptInfo promptInfo;
+    private int mCipherOperationMode;
+    private byte[] mEncryptValue;
+    private String mDecryptKey;
     private KeyStore keyStore;
     private KeyGenerator keyGenerator;
     private KeyPairGenerator keyPairGenerator;
@@ -90,32 +99,21 @@ public class Surelock {
     //Set from Builder
     private SurelockStorage storage;
     private final String keyStoreAlias;
-    private String surelockFragmentTag;
-    private SurelockFragment surelockFragment;
-    private FragmentManager fragmentManager;
-    private boolean useDefault;
-    @StyleRes
-    private int styleId;
 
-    static Surelock initialize(@NonNull Builder builder) {
+    public static Surelock initialize(@NonNull Builder builder) {
         return new Surelock(builder);
     }
 
     Surelock(Builder builder) {
-        if (builder.context instanceof SurelockFingerprintListener) {
-            this.listener = (SurelockFingerprintListener) builder.context;
+        if (builder.fragmentActivity instanceof SurelockFingerprintListener) {
+            this.listener = (SurelockFingerprintListener) builder.fragmentActivity;
         } else {
-            throw new RuntimeException(builder.context.toString()
+            throw new RuntimeException(builder.fragmentActivity.toString()
                     + " must implement FingerprintListener");
         }
 
         this.storage = builder.storage;
         this.keyStoreAlias = builder.keyStoreAlias;
-        this.surelockFragmentTag = builder.surelockFragmentTag;
-        this.surelockFragment = builder.surelockFragment;
-        this.fragmentManager = builder.fragmentManager;
-        this.useDefault = builder.useDefault;
-        this.styleId = builder.styleId;
 
         try {
             setUpKeyStoreForEncryption();
@@ -123,7 +121,70 @@ public class Surelock {
             Log.e(TAG, "Failed to set up KeyStore", e);
         }
 
-        fingerprintManager = FingerprintManagerCompat.from(builder.context);
+        Executor executor = ContextCompat.getMainExecutor(builder.fragmentActivity);
+        biometricPrompt = new BiometricPrompt(builder.fragmentActivity, executor, biometricCallback);
+        promptInfo = setupPromptInfo(builder.fragmentActivity, builder.styleId);
+    }
+
+    private BiometricPrompt.AuthenticationCallback biometricCallback = new BiometricPrompt.AuthenticationCallback() {
+        @Override
+        public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+            super.onAuthenticationError(errorCode, errString);
+            listener.onFingerprintError(errString);
+        }
+
+        @Override
+        public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+            super.onAuthenticationSucceeded(result);
+            if (Cipher.ENCRYPT_MODE == mCipherOperationMode) {
+                try {
+                    final byte[] encryptedValue = result.getCryptoObject().getCipher().doFinal(mEncryptValue);
+                    storage.createOrUpdate(mDecryptKey, encryptedValue);
+                    listener.onFingerprintEnrolled();
+                } catch (IllegalBlockSizeException | BadPaddingException e) {
+                    listener.onFingerprintError(e.getMessage());
+                }
+            } else if (Cipher.DECRYPT_MODE == mCipherOperationMode) {
+                byte[] encryptedValue = storage.get(mDecryptKey);
+                byte[] decryptedValue;
+                try {
+                    decryptedValue = result.getCryptoObject().getCipher().doFinal(encryptedValue);
+                    listener.onFingerprintAuthenticated(decryptedValue);
+                } catch (BadPaddingException | IllegalBlockSizeException e) {
+                    listener.onFingerprintError(e.getMessage());
+                }
+            }
+        }
+
+        @Override
+        public void onAuthenticationFailed() {
+            super.onAuthenticationFailed();
+            listener.onFingerprintError(null);
+        }
+    };
+
+    private BiometricPrompt.PromptInfo setupPromptInfo(FragmentActivity fragmentActivity, @StyleRes int styleId) {
+        BiometricPrompt.PromptInfo.Builder promptInfoBuilder = new BiometricPrompt.PromptInfo.Builder();
+        TypedArray attrs = fragmentActivity.obtainStyledAttributes(styleId, R.styleable
+                .BiometricDialog);
+        String titleText = attrs.getString(R.styleable.BiometricDialog_biometric_title_text);
+        if(!TextUtils.isEmpty(titleText)) {
+            promptInfoBuilder.setTitle(titleText);
+        } else {
+            promptInfoBuilder.setTitle(fragmentActivity.getResources().getString(R.string.fingerprint_title));
+        }
+        String descriptionText = attrs.getString(R.styleable.BiometricDialog_biometric_description_text);
+        if(!TextUtils.isEmpty(descriptionText)) {
+            promptInfoBuilder.setDescription(descriptionText);
+        } else {
+            promptInfoBuilder.setDescription(fragmentActivity.getResources().getString(R.string.fingerprint_description));
+        }
+        String negativeButtonText = attrs.getString(R.styleable.BiometricDialog_biometric_negative_button_text);
+        if(!TextUtils.isEmpty(negativeButtonText)) {
+            promptInfoBuilder.setNegativeButtonText(negativeButtonText);
+        }
+        attrs.recycle();
+        return promptInfoBuilder.build();
     }
 
     /**
@@ -133,7 +194,7 @@ public class Surelock {
      */
     @SuppressWarnings({"MissingPermission"})
     public static boolean hasFingerprintHardware(Context context) {
-        return FingerprintManagerCompat.from(context).isHardwareDetected();
+        return BiometricManager.from(context).canAuthenticate() != BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE;
     }
 
     /**
@@ -143,7 +204,7 @@ public class Surelock {
      */
     @SuppressWarnings({"MissingPermission"})
     public static boolean hasUserEnrolledFingerprints(Context context) {
-        return FingerprintManagerCompat.from(context).hasEnrolledFingerprints();
+        return BiometricManager.from(context).canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS;
     }
 
     /**
@@ -232,7 +293,10 @@ public class Surelock {
         }
 
         if (cipher != null) {
-            showFingerprintDialog(key, cipher, getSurelockFragment(true), valueToEncrypt);
+            mCipherOperationMode = Cipher.ENCRYPT_MODE;
+            mEncryptValue = valueToEncrypt;
+            mDecryptKey = key;
+            biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
         } else {
             throw new SurelockException("Failed to init Cipher for encryption", null);
         }
@@ -258,30 +322,18 @@ public class Surelock {
         }
 
         if (cipher != null) {
-            showFingerprintDialog(key, cipher, getSurelockFragment(false), null);
+            mCipherOperationMode = Cipher.DECRYPT_MODE;
+            mDecryptKey = key;
+            biometricPrompt.authenticate(promptInfo, new BiometricPrompt.CryptoObject(cipher));
         } else {
             throw new SurelockInvalidKeyException("Failed to init Cipher. Key may be invalidated. Try re-enrolling.", null);
         }
     }
 
-    private SurelockFragment getSurelockFragment(boolean isEnrolling) {
-        if (surelockFragment != null) {
-            return surelockFragment;
+    public void hidePrompt() {
+        if (biometricPrompt != null) {
+            biometricPrompt.cancelAuthentication();
         }
-        if (useDefault) {
-            return SurelockDefaultDialog.newInstance(isEnrolling ? Cipher.ENCRYPT_MODE : Cipher
-                    .DECRYPT_MODE, styleId);
-        } else {
-            return SurelockMaterialDialog.newInstance(isEnrolling ? Cipher.ENCRYPT_MODE : Cipher
-                    .DECRYPT_MODE);
-        }
-    }
-
-    private void showFingerprintDialog(String key, @NonNull Cipher cipher, SurelockFragment
-            surelockFragment, @Nullable byte[] valueToEncrypt) {
-        surelockFragment.init(fingerprintManager, new FingerprintManagerCompat.CryptoObject(cipher),
-                key, storage, valueToEncrypt);
-        surelockFragment.show(fragmentManager, surelockFragmentTag);
     }
 
     /**
@@ -469,78 +521,24 @@ public class Surelock {
 
     public static class Builder {
 
-        private Context context;
-        private FragmentManager fragmentManager;
-        private String surelockFragmentTag;
-        private SurelockFragment surelockFragment;
-        private boolean useDefault;
+        private FragmentActivity fragmentActivity;
         @StyleRes
         private int styleId;
         private String keyStoreAlias;
         private SurelockStorage storage;
 
-        public Builder(@NonNull Context context) {
-            this.context = context;
+        public Builder(@NonNull FragmentActivity fragmentActivity) {
+            this.fragmentActivity = fragmentActivity;
         }
 
         /**
-         * Indicates that fingerprint login should be prompted using the SurelockDefaultDialog
-         * class. This is a fullscreen dialog that can be styled to match an app's theme.
+         * Allows styling of the biometric prompt
          *
          * @param styleId The style resource file to be used for styling the dialog
          * @return This Builder to allow for method chaining
          */
-        public Builder withDefaultDialog(@StyleRes int styleId) {
-            useDefault = true;
-            surelockFragment = null;
+        public Builder withStyle(@StyleRes int styleId) {
             this.styleId = styleId;
-            return this;
-        }
-
-        /**
-         * Indicates that fingerprint login should be prompted using the SurelockMaterialDialog.
-         * This dialog follows Material Design guidelines.
-         *
-         * @return This Builder to allow for method chaining
-         */
-        public Builder withMaterialDialog() {
-            useDefault = false;
-            surelockFragment = null;
-            return this;
-        }
-
-        /**
-         * Indicates that fingerprint login should be prompted using the given dialog.
-         *
-         * @param surelockFragment The custom dialog to use for fingerprint login
-         * @return This Builder to allow for method chaining
-         */
-        public Builder withCustomDialog(@NonNull SurelockFragment surelockFragment) {
-            this.surelockFragment = surelockFragment;
-            return this;
-        }
-
-        /**
-         * Indicates the tag to use for the SurelockFragment. This method MUST be called before
-         * enrolling and logging in.
-         *
-         * @param surelockFragmentTag The tag to use
-         * @return This Builder to allow for method chaining
-         */
-        public Builder withSurelockFragmentTag(@NonNull String surelockFragmentTag) {
-            this.surelockFragmentTag = surelockFragmentTag;
-            return this;
-        }
-
-        /**
-         * Indicates the fragment manager to use to manage the SurelockFragment. This method MUST
-         * be called before enrolling and logging in.
-         *
-         * @param fragmentManager The fragment manager to use
-         * @return This Builder to allow for method chaining
-         */
-        public Builder withFragmentManager(@NonNull FragmentManager fragmentManager) {
-            this.fragmentManager = fragmentManager;
             return this;
         }
 
@@ -582,12 +580,6 @@ public class Surelock {
             }
             if (storage == null) {
                 throw new IllegalStateException("SurelockStorage cannot be null.");
-            }
-            if (TextUtils.isEmpty(surelockFragmentTag)) {
-                throw new IllegalStateException("The dialog fragment tag cannot be empty.");
-            }
-            if (fragmentManager == null) {
-                throw new IllegalStateException("The fragment manager cannot be empty.");
             }
         }
 

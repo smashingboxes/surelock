@@ -1,6 +1,6 @@
 package com.smashingboxes.surelock;
 
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 
 /**
  * Created by Tyler McCraw on 2/17/17.
