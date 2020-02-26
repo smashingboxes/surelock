@@ -331,7 +331,9 @@ public class Surelock {
     }
 
     public void hidePrompt() {
-        biometricPrompt.cancelAuthentication();
+        if (biometricPrompt != null) {
+            biometricPrompt.cancelAuthentication();
+        }
     }
 
     /**
