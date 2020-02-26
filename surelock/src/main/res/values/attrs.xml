@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <declare-styleable name="SurelockDefaultDialog">
-        <attr name="sl_fallback_button_text" format="string"/>
-        <attr name="sl_fallback_button_text_color" format="color"/>
-        <attr name="sl_fallback_button_background" format="color"/>
-
-        <attr name="sl_title_bar_text" format="string"/>
-        <attr name="sl_title_bar_text_color" format="color"/>
-        <attr name="sl_title_bar_background" format="color"/>
-
-        <attr name="sl_dialog_theme" format="reference"/>
+    <declare-styleable name="BiometricDialog">
+        <attr name="biometric_title_text" format="string"/>
+        <attr name="biometric_description_text" format="string"/>
+        <attr name="biometric_negative_button_text" format="string"/>
     </declare-styleable>
 </resources>

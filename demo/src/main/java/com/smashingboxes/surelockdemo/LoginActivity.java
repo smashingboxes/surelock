@@ -121,10 +121,8 @@ public class LoginActivity extends AppCompatActivity implements SurelockFingerpr
     private Surelock getSurelock() {
         if (surelock == null) {
             surelock = new Surelock.Builder(this)
-                    .withDefaultDialog(R.style.SurelockDemoDialog)
+                    .withStyle(R.style.SurelockDemoDialog)
                     .withKeystoreAlias(KEYSTORE_KEY_ALIAS)
-                    .withFragmentManager(getFragmentManager())
-                    .withSurelockFragmentTag(FINGERPRINT_DIALOG_FRAGMENT_TAG)
                     .withSurelockStorage(surelockStorage)
                     .build();
         }
