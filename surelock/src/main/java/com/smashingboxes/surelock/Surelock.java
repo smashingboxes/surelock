@@ -100,7 +100,7 @@ public class Surelock {
     private SurelockStorage storage;
     private final String keyStoreAlias;
 
-    static Surelock initialize(@NonNull Builder builder) {
+    public static Surelock initialize(@NonNull Builder builder) {
         return new Surelock(builder);
     }
 
@@ -160,7 +160,6 @@ public class Surelock {
         public void onAuthenticationFailed() {
             super.onAuthenticationFailed();
             listener.onFingerprintError(null);
-            // TODO: Make sure prompt shows error in this case, otherwise toast.
         }
     };
 
@@ -329,6 +328,10 @@ public class Surelock {
         } else {
             throw new SurelockInvalidKeyException("Failed to init Cipher. Key may be invalidated. Try re-enrolling.", null);
         }
+    }
+
+    public void hidePrompt() {
+        biometricPrompt.cancelAuthentication();
     }
 
     /**
